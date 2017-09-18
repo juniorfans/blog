@@ -15,7 +15,9 @@
 通过配对使用内存栅栏可以实现同步. 举例说明各种栅栏的作用
 
 - **#loadload** 和 **#storestore**
+
     A 和 B 默认为 0
+     
 | CPU1          | CPU2          |
 | :------------ | :-------------|
 | A=1;          | Y=B;          |
@@ -25,7 +27,9 @@
 对 CPU2 的执行结果检查，如果 Y=1 则必有 X=1。但如果 Y=0 则 X 的值可能为 0 或 1. 这很像一种“半同步”关系：并非任意时刻该同步关系都满足。
 
 - **#loadstore**
+
     A 和 B 默认为 0
+    
 | CPU1          | CPU2          |
 | :------------ | :-------------|
 | X=A;          | Y=B;          |
@@ -34,7 +38,9 @@
 检查 CPU1 和 CPU2 执行后的结果，若 Y=1，则 X=0；若 X=1，则 Y=0；
 
 - **#loadstore**  和 **#storestore**
+
     A 和 B 默认为 0
+    
 | CPU1          | CPU2          |
 | :------------ | :-------------|
 | X=A;          | B=2;          |
@@ -43,7 +49,9 @@
 检查 CPU1 和 CPU2 执行后的结果，若 X=1 则 B=1 (B用新值覆盖旧值)；若 X=0，则B为0或1。
 
 - **有点特殊的 #storeload**
+
     A 和 B 默认为 0
+    
 | CPU1          | CPU2          |
 | :------------ | :-------------|
 | B=1;          | B=2;          |
@@ -226,7 +234,7 @@ acquire 和 release 的存在就是为了实现一种 syncronizes-with 关系, �
 [linux kernel document][https://www.kernel.org/doc/Documentation/memory-barriers.txt]
 
 作者：eddgarlli
-链接：http://blog.csdn.net/lizhihaoweiwei
+博客：http://blog.csdn.net/lizhihaoweiwei
 來源：CSDN
 著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
 
