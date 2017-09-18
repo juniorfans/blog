@@ -214,6 +214,7 @@ TryReceiveMessage 直到 1==ready, 这是不是有点自旋锁的意味?
 即使 g_payload 的读/写不是原子的, acquire/release 语义也保证了当 1==g_guard 被观察到时 g_payload 的所
 有读/写必然已经完成. 
 - 再研究一个问题:  g_guard 的读/写能否可以不是原子的呢? 答案是不能. 简化上面的代码如下:
+
 ```
 //thread1
 store g_payload
@@ -225,6 +226,7 @@ load g_guard	//如上所说此处 g_guard 可能是部分可见.
 #acquire load
 load g_payload
 ```
+
 &ensp;&ensp;&ensp;&ensp;综上, 对 g_guard 的load&load 应该是原子的.
 
 
@@ -232,11 +234,17 @@ acquire 和 release 的存在就是为了实现一种 syncronizes-with 关系, �
 而各种内存栅栏又实现了 acquire 和 release 语义(虽然内存栅栏提供的功能比这两个语义更严格, 更多的功能).
 
 一些有用的参考文献:
+
 [Preshing on Programming][http://preshing.com/]
+
 [并发编程网 The Jsr-133 cookbook for Compiler Writers 译文][http://ifeve.com/jmm-faq/]
+
 [CSDN java 并发编程专栏][http://blog.csdn.net/column/details/concurrency.html]
+
 [Cpp Concurrency In Action][https://github.com/xiaoweiChen/Cpp_Concurrency_In_Action]
+
 [linux kernel document][https://www.kernel.org/doc/Documentation/memory-barriers.txt]
+
 
 作者：eddgarlli
 博客：http://blog.csdn.net/lizhihaoweiwei
