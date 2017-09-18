@@ -132,7 +132,9 @@ A.store(0, std::memory_order_release); //在此句代码之前的代码的读或
 while (!B.compare_exchange_weak(expected, 1, std::memory_order_acquire))//之后的读写发生在之后
 ```
 第一句具有 release 语义，第二句具有 acquire 语义。相应的内存可见性限制以注释形式加在代码之后。从语义上讲，这两句代码确实可以乱序！我们看看这两个语义是怎么实现的：
-<center>![Alt text](./acq-rel-barriers.png)</center>
+
+<center>![图片][https://github.com/juniorfans/blog/blob/master/1/acq-rel-barriers.png]
+</center>
 
 ```
 acquire 语义
