@@ -81,6 +81,7 @@
 有一个有意思的问题, [Can Reordering of Release/Acquire Operations Introduce Deadlock?][2]
 在上面那篇文章中，作者给出一个例子：
 thread1 执行以下代码：
+
 ```
 // Lock A
 int expected = 0;
@@ -100,6 +101,7 @@ while (!B.compare_exchange_weak(expected, 1, std::memory_order_acquire)) {
 B.store(0, std::memory_order_release);
 ```
 thread2 执行以下代码:
+
 ```
 // Lock B
 int expected = 0;
@@ -118,6 +120,7 @@ A.store(0, std::memory_order_release);
 // Unlock B
 B.store(0, std::memory_order_release);
 ```
+
 thread1 中标注为 **关键行** 的那行代码能否与它下面那个 while 乱序执行呢? 如果能乱序，将导致死锁。该作者认为不会乱序，因为 C++11 的内存模型保证了原子操作的内存可见性:
 > An implementation should ensure that the last value (in modification order) assigned by an atomic or synchronization operation will become visible to all other threads in a finite period of time.
 
@@ -130,6 +133,7 @@ while (!B.compare_exchange_weak(expected, 1, std::memory_order_acquire))//之后
 ```
 第一句具有 release 语义，第二句具有 acquire 语义。相应的内存可见性限制以注释形式加在代码之后。从语义上讲，这两句代码确实可以乱序！我们看看这两个语义是怎么实现的：
 <center>![Alt text](./acq-rel-barriers.png)</center>
+
 ```
 acquire 语义
 	load1
@@ -165,7 +169,8 @@ release 语义
 方法.
 - syncronizes-with 关系必然涉及到两个变量: guard variable 和 payload. 也即守护变量和真正使用的变量.
 
-编写下面的c++11 代码构建 ***写guard variable*** 与 ***读 payload*** 的 happen-before 关系. 
+编写下面的c++11 代码构建 ***写guard variable*** 与 ***读 payload*** 的 happen-before 关系.
+ 
 ``` 
 void SendTestMessage(void* param)
 {
