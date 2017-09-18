@@ -133,9 +133,9 @@ while (!B.compare_exchange_weak(expected, 1, std::memory_order_acquire))//之后
 ```
 第一句具有 release 语义，第二句具有 acquire 语义。相应的内存可见性限制以注释形式加在代码之后。从语义上讲，这两句代码确实可以乱序！我们看看这两个语义是怎么实现的：
 
-<div align=center>
-![](/1/acq-rel-barriers.png)
-</div>
+
+<center>![dfkjkdfj][3]</center>
+
 
 ```
 acquire 语义
@@ -261,5 +261,5 @@ acquire 和 release 的存在就是为了实现一种 syncronizes-with 关系, �
 
  [1]: http://maxiang.info/client_zh
  [2]: http://preshing.com/20170612/can-reordering-of-release-acquire-operations-introduce-deadlock/ 
- [3]: https://github.com/juniorfans/blog/blob/master/1/acq-rel-barriers.png
- [4]: https://github.com/juniorfans/blog/blob/master/1/two-cones.png
+ [3]: https://github.com/juniorfans/blog/raw/master/1/acq-rel-barriers.png
+ [4]: https://github.com/juniorfans/blog/raw/master/1/two-cones.png
