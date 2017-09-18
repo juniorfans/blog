@@ -133,7 +133,7 @@ while (!B.compare_exchange_weak(expected, 1, std::memory_order_acquire))//之后
 ```
 第一句具有 release 语义，第二句具有 acquire 语义。相应的内存可见性限制以注释形式加在代码之后。从语义上讲，这两句代码确实可以乱序！我们看看这两个语义是怎么实现的：
 
-![图片](https://github.com/juniorfans/blog/blob/master/1/acq-rel-barriers.png)
+<center>![pic](./1/acq-rel-barriers.png)</center>
 
 
 ```
@@ -210,7 +210,7 @@ bool TryReceiveMessage(Message& result)
 准备好了可以接收消息. 是否构成 happen-before 关系取决于运行时的状态. 比如，我们可以一直循环执行
 TryReceiveMessage 直到 1==ready, 这是不是有点自旋锁的意味?
 - 还需要注意的一点是，对 payload 变量的 load 或 store 可以不是原子的. 如下图所示, acquire 语义阻止了所有在它后面的读或写重排序. release 语义阻止了所有在它前面的读或写重排序
-<center>![Alt text](./two-cones.png)</center>
+<center>![Alt text](./1/two-cones.png)</center>
 
  **(再次强调: 类似于内存栅栏需要成对使用, acquire 和 release 成对使用才能构成 syncronizes-with 关系.)**
 即使 g_payload 的读/写不是原子的, acquire/release 语义也保证了当 1==g_guard 被观察到时 g_payload 的所
