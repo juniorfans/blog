@@ -216,6 +216,7 @@ TryReceiveMessage 直到 1==ready, 这是不是有点自旋锁的意味?
 - 再研究一个问题:  g_guard 的读/写能否可以不是原子的呢? 答案是不能. 简化上面的代码如下:
 
 ```
+
 //thread1
 store g_payload
 #store release
@@ -225,6 +226,7 @@ store g_guard	//该行代码后没有任何语义保证 store g_guard 什么时�
 load g_guard	//如上所说此处 g_guard 可能是部分可见.
 #acquire load
 load g_payload
+
 ```
 
 &ensp;&ensp;&ensp;&ensp;综上, 对 g_guard 的load&load 应该是原子的.
