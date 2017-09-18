@@ -3,13 +3,13 @@
 **概览**
 内存栅栏是为了在乱序执行的处理器上保证执行顺序及内存可见性的手段。
 四种细粒度的内存栅栏
-1. #loadload
+1. loadload
      load1 #loadload load2	:	load1 happen-before load2
-2. #storestore
+2. storestore
     store1 #storestore store2	:	store1 happen-before store2
-3. #loadstore
+3. loadstore
     store1 #storestore store2	:	store1 happen-before store2
-4. #storeload
+4. storeload
      store1 #storeload load1	:	store1 happen-before load1
     
 通过配对使用内存栅栏可以实现同步. 举例说明各种栅栏的作用
