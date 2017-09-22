@@ -1,3 +1,5 @@
+\#\#condvar 的实现
+
 1.wait 里面先增加了 \_\_wseq\(waiter sequence\)和 waiter reference，达到注册“等待者”的目的，再释放锁。于是在 signal 中可以观察到等待者。
 
 2.每个 waiter 增加 \_\_wseq 后得到的值即是这个 waiter 在等待队列中的位置。
