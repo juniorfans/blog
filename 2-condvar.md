@@ -61,7 +61,7 @@ zzz
 signalCond(g_cond);
 ```
 
-问题的关键在于，即使 thread1 只有一行 waitCond 代码，而 thread2 有很多行代码并且 signalCond 在最后一行，在多核处理器上，thread1 先于 thread2 运行，能保证 waitCond 中的 `switchToCoreAndWait` 函数一定先于 signalCond 执行吗？必然不能！因为现代处理器允许超标量流水线处理，这存在着大量指令重排序，因此，在没有同步干涉的情况下不能预计两个不相关线程的执行先后顺序。  
+即使 thread1 只有一行 waitCond 代码，而 thread2 有很多行代码并且 signalCond 在最后一行，在多核处理器上，thread1 先于 thread2 运行，能保证 waitCond 中的 `switchToCoreAndWait` 函数一定先于 signalCond 执行吗？必然不能！因为现代处理器允许超标量流水线处理，这存在着大量指令重排序，因此，在没有同步干涉的情况下不能预计两个不相关线程的执行先后顺序。  
 上面的结论会导致`违反直觉`的行为发生：程序员的调用顺序上，waitCond 先于 signalCond，但 waitCond 却等不到后面 signalCond 的触发/唤醒！   
 因此需要做一些同步来保证逻辑上的正确性。
 
