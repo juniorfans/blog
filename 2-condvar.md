@@ -11,10 +11,10 @@ while(!condvar)
     //do something
 }
 ```
-轮询的方法太浪费 CPU 时间片，如果我们在等待的时候不占用 CPU 时间就好了。那也就意味着，当条件不满足时，当前线程应该放弃 CPU，直到条件满足能立即恢复往后执行。
+轮询的方法太浪费 CPU 时间片，如果我们在等待的时候不占用 CPU 时间就好了。那也就意味着，当条件不满足时，当前线程应该放弃 CPU，直到条件满足能立即恢复往后执行(操作系统将线程放回到线程调度队列)。
 **上面一句话需要从两个层面看：**
-- `当条件不满足时，当前线程放弃 CPU`： 这意味着，线程必须要退出调度，也即要陷入内核模式，由内核保存线程上下文。
-- `直到条件满足立即恢复往后执行`：这意味着，等待中的线程，必须要被通知到。
+- `当条件不满足时，当前线程放弃 CPU`： 这意味着需要通过一个系统调用由用户模式陷入内核模式，操作系统的线程调度器将该线程从调度队列中暂时移除且内核保存线程上下文。
+- `直到条件满足立即恢复往后执行`：这意味着条件满足时，(另一个线程，即触发线程)需要通知内核，由内核将线程放回调度队列。
 
 线程变量就是为了解决这个问题的。我们现在要探讨线程变量的设计与实现。
 
@@ -68,7 +68,6 @@ lock(g_mutex);
 waitCond(g_cond);
 unlock(g_mutex);
 
-
 //thread2
 lock(g_mutex);
 xxxx
@@ -80,6 +79,47 @@ unlock(g_mutex);
 
 ```
 
+和上一个版本不同的是，只要 thread1 先抢到锁，就一定可以保证 waitCond 先执行。这就保证了行为与程序员的设计是一致地！
+但这里有两个陷阱：
+1.如果按设想的来，thread1  先抢到锁，进入等待。但十分隐蔽的一个错误是：thread2 永远无法获得锁，也就不会有机会调用 signalCond。这会导致 thread1 和 thread2 死锁！
+2.如果 thread2 先执行呢？那岂不是会造成 signalCond 先于 waitCond 执行？而这会造成后者死等待！
+下面我们一个一个解决这些问题。
 
+#深入
+解决的思路是比较简单的：在线程真正开始等待之前应该释放锁。那是不是应该如下这样呢？
+```
+//thread1:
+lock(g_mutex);
+unlock(g_mutex);
+waitCond(g_cond);
+unlock(g_mutex);
+```
+上面的代码看起来有点奇怪： `lock` 后立即 `unlock`.
+我们可以将 unlock 放到 waitCond 内部：
+```
+void waitCond(Condvar &cond, Mutex &mutex)
+{
+    unlock(mutex);
+    switchToCoreAndWait(cond); //放弃时间片调度，进入内核模式等待
+}
+```
+等等，似乎还有问题：最后一行的 unlock 没有对应的 lock ！这会引起什么问题呢？假设 thread1 有这样的代码：
+
+```
+//thread1:
+lock(g_mutex);
+waitCond(g_cond, g_mutex);
+//do something after cond satisfied
+xxx
+yyy
+zzz
+unlock(g_mutex);
+```
+在条件变量满足后， waitCond 返回，做这个线程想做的事，注意，因为 xxx, yyy, zzz 这几行代码被包围在 g_mutex 的锁定区，调用者的意图是，这几行代码可能存在竞争，需要安全地执行。反观我们的设计 waitCond 函数，switchToCoreAndWait 返回后，往下执行。注意此时 thread1 已经失去了锁的保护，不再是线程安全的了。于是，后面的 xxx, yyy, zzz 会面临竞争的危险。另外一个问题是，由于锁已经被释放，此时，调用者写的那行 unlock 可能导致未知的行为，这取决于 Mutex 的设计。
+解决的方法其实也很简单，库函数 waitCond 既然释放了锁，那也就得需要它再锁上：
+
+
+
+所以，我们需要将 unlock 与 waitCond 原子化. 我们先将释放锁，进入等待这两个操作封装到一个函数里面，然后在这个函数内部去原子化，也只有这样才可能实现原子化。封装之后的 waitCond 可能是这样的：
 
 
