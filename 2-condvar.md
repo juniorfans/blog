@@ -210,9 +210,9 @@ unlock(__inner_mutex);
 6. signal 中获得锁后，检查 \_\_wseq，当没有等待者直接返回。否则获得锁，检查是否需要切换组\(例如首次调用 wait 后 G1 为空，G2有一个等待者，则首次调用 signal 后需要将 G2 切换为 G1\)，递增 \_\_g\_signals，递减 \_\_g\_size\(未唤醒的 waiters 个数\)，再调用 futex\_wake。
 7. 由5和6可知，若线程A wait，线程B signal，有以下破坏“释放锁并等待”的执行顺序：“A-释放锁，B-获得锁，B-递增 \_\_g\_signals，B-futex\_wake，A-futex\_wait”，该执行顺序下，最后一个 A-futex\_wait由于 futex\_wait 期望的关键字 \_\_g\_signals 值不为 0 则它不会进入等待，被直接唤醒；若执行的顺序是，“A-释放锁，B-获得锁，B-递增 \_\_g\_signals，A-futex\_wait，B-futex\_wake”，由原因同上，futex\_wait 并不会真正进入等待。这两种情况下的 futex\_wake 没有任何作用\(它本来不会引起阻塞，调用无害\)！
 
-需要注意的是，上面的 G1, G2本身其实与`释放锁-等待`原子化无关，它主要是用于解决 Releax-MO 中的 ABA 问题的。
+需要注意的是，上面的 G1, G2本身其实与`释放锁-等待`原子化无关，它主要是用于解决 Releax-MO 中的 ABA 问题的。futex 锁是用于提高等待的效率的，最大程度减少陷入到内核模式的次数，本文限于篇幅也不再探讨，
 #结语
-本文从最基本的想法开始，一步一步探讨了条件变量的设计与实现。实际上，还有很多的细节需要考虑：效率，ABA问题，内存可见性问题，等待，都需要殚精竭虑！这些本文都没有涉及，有兴趣深入地，推荐使用在线C++源码阅读站看看 glibc 这块的源码：
+本文从最基本的想法开始，一步一步探讨了条件变量的设计与实现。实际上，还有很多的细节需要考虑：效率，ABA问题，内存可见性问题，等等，这些无一不需要殚精竭虑！这些本文都没有涉及，有兴趣深入地，推荐使用在线C++源码阅读站看看 glibc 这块的源码：
 [glibc-pthread_cond_wait][https://code.woboq.org/userspace/glibc/nptl/pthread_cond_wait.c.html]
 [glibc-pthread_cond_signal][https://code.woboq.org/userspace/glibc/nptl/pthread_cond_signal.c.html]
 
