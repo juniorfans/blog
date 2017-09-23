@@ -1,16 +1,51 @@
-\#\#condvar 的实现
+##condvar 的实现
+#概述
+有一种较复杂的线程同步模型，当一个或多个线程需要等到某个条件满足，才能继续往后执行。另外的一个或多个线程可以更改那个条件，使其满足。这一线程模型是一个固定存在的模型，我们来研究一下，有哪些可能的实现方法。
 
-1.wait 里面先增加了 \_\_wseq\(waiter sequence\)和 waiter reference，达到注册“等待者”的目的，再释放锁。于是在 signal 中可以观察到等待者。
+#轮询
+最次的可能是轮循等待，如下：
 
-2.每个 waiter 增加 \_\_wseq 后得到的值即是这个 waiter 在等待队列中的位置。
+```
+while(!condvar)
+{
+    //do something
+}
+```
+轮询的方法太浪费 CPU 时间片，如果我们在等待的时候不占用 CPU 时间就好了。那也就意味着，当条件不满足时，当前线程应该放弃 CPU，直到条件满足能立即恢复往后执行。
+**上面一句话需要从两个层面看：**
+- `当条件不满足时，当前线程放弃 CPU`： 这意味着，线程必须要退出调度，也即要陷入内核模式，由内核保存线程上下文。
+- `直到条件满足立即恢复往后执行`：这意味着，等待中的线程，必须要被通知到。
 
-3.wait 中使用的 futex\_wait 关键字与 signal 中 futex\_wake 是一样的关键字: \_\_g\_signals。\_\_g\_signals 大于0表示可唤醒等待者。futex\_wait 期望该关键字值为0，futex\_wake 设置该关键字值为1.
+线程变量就是为了解决这个问题的。我们现在要探讨线程变量的设计与实现。
 
-4.使用两组机制：G1 组由那些有机会消耗 signals 的 waiters 组成。新到来的 signals 将一直唤醒该组的 waiters 直到 G1 所有的 waiters 都被唤醒。G2 组由后到达的 waiters 组成\(此时 G1 中还存在未被唤醒的 waiters\)。当 G1 中所有的 waiters 都被唤醒且有一个新的 signal 到达，则这个 signal 将 G2 转化为新的 G1
+#初控
+最基本地，我们我们可以对外提供一个函数来实现等待，对应地：
 
-5.wait 中释放锁后，自旋等待，检查 \_\_g\_signals，自旋次数结束，进入 futex\_wait。（省掉掉了异常处理：惊群效应，取消等待，组关闭等）
+```
+void waitCond(Condvar &cond)
+{
+    switchToCoreAndWait(cond); //放弃时间片调度，进入内核模式等待
+}
+```
 
-6.signal 中获得锁后，检查 \_\_wseq，当没有等待者直接返回。否则获得锁，检查是否需要切换组\(例如首次调用 wait 后 G1 为空，G2有一个等待者，则首次调用 signal 后需要将 G2 切换为 G1\)，递增 \_\_g\_signals，递减 \_\_g\_size\(未唤醒的 waiters 个数\)，再调用 futex\_wake。
+相应地，另外一个线程应该在合适的时机，先使条件满足，再调用一个 signalCond 通知等待的线程
 
-7.由5和6可知，若线程A wait，线程B signal，有以下破坏“释放锁并等待”的执行顺序：“A-释放锁，B-获得锁，B-递增 \_\_g\_signals，B-futex\_wake，A-futex\_wait”，该执行顺序下，最后一个 A-futex\_wait由于 futex\_wait 期望的关键字 \_\_g\_signals 值不为 0 则它不会进入等待，被直接唤醒；若执行的顺序是，“A-释放锁，B-获得锁，B-递增 \_\_g\_signals，A-futex\_wait，B-futex\_wake”，由原因同上，futex\_wait 并不会真正进入等待。这两种情况下的 futex\_wake 没有任何作用\(它本来不会引起阻塞，调用无害\)！
+```
+void signalCond(Condvar &cond)
+{
+    signalToWake(cond); //唤醒一个等待在 cond 上的线程
+}
 
+```
+
+问题看起来解决了，但，这是全部吗？答案是否定的
+我们需要保证 `waitCond` 和 `signalCond` 的调用顺序和可期待的结果(不与调用者的行为发生客观性的矛盾)。
+按现在提供的函数，无法知道哪一个在前，哪一个在的，若 `sinalCond` 在前执行，`waitCond` 在后，则 `waitCond` 是一个无穷等待。
+也许你会辩称，在逻辑上，先调用 waitCond 不就可以了吗。但是这是一个一厢情愿的想法，如下的代码
+
+```
+void say()
+{
+    
+}
+```
