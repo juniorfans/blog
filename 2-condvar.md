@@ -86,9 +86,9 @@ signalcond(g_cond);
 unlock(g_mutex);
 ```
 
-和上一个版本不同的是，只要 thread1 先抢到锁，就一定可以保证 waitCond 先执行。这就保证了行为与程序员的设计是一致地！  
+和上一个版本不同的是，只要 thread1 先抢到锁，就一定可以保证 waitCond 先执行。这就保证了得到的行为与程序员的设计是一致地！  
 但这里有两个陷阱：  
-1.如果按设想的来，thread1  先抢到锁，进入等待。但十分隐蔽的一个错误是：thread2 永远无法获得锁，也就不会有机会调用 signalCond。这会导致 thread1 和 thread2 死锁！  
+1.如果按设想的来，thread1 先抢到锁，进入等待。但十分隐蔽的一个错误是：thread2 永远无法获得锁，也就不会有机会调用 signalCond。这会导致 thread1 和 thread2 死锁！  
 2.如果 thread2 先执行呢？那岂不是会造成 signalCond 先于 waitCond 执行？而这会造成后者死等待！  
 下面我们一个一个解决这些问题。
 
@@ -144,7 +144,7 @@ void signalCond(Condvar &cond)
 }
 ```
 
-这样既完美与调用者代码融合\(lock 与 unlock 配对\)，也保证了逻辑正确性。  
+这样既完美与调用者代码融合\(lock 与 unlock 配对\)，也保证了逻辑正确性。需要注意的是，***waitCond 现在多了一个参数：mutex***：它是由调用得传入的锁，因此，被称为用户锁。不管是 glibc 实现的条件变量的 waitCond 函数，还是 Win32 的 waitCond，都有这个用户锁变量参数，而很多人往往没有把握到这个本质。
 便于阅读，我们把这两个函数的使用也列出：
 
 ```
