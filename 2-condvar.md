@@ -190,10 +190,13 @@ unlock(mutex);
 
 很显然，`unlock` 和 `switchToCoreAndWait` 是两个操作，不可能实现为一条原子指令，因此，我们只能考虑逻辑上的原子。  
 能不能使用常规的做法，将可能有副作用的多个线程同步，强制顺序执行呢？即：  
-lock\(**inner\_mutex\);  
-unlock\(mutex\);  
-switchToCoreAndWait\(cond\); //放弃时间片调度，进入内核模式等待  
-unlock\(**inner\_mutex\);  
+```
+lock(__inner_mutex);
+unlock(mutex);
+switchToCoreAndWait(cond); //放弃时间片调度，进入内核模式等待
+unlock(__inner_mutex);
+```
+
 看起来 work，但考虑这几行代码运行的环境，这将引发之前遇到过的问题：本线程加锁之后等待，没有其他线程释放锁。这个就相当于**将钥匙投进了上了锁的个人信箱里面**。  
 这个法子不行，我们再 review 我们的需求：`unlock` 和 `switchToCoreAndWait` 原子化，更深层次的原因是防止前面的 waiter 得不到 signal\(先调用 waitCond，再调用 signalCond\)。  
 由于 waitCond 或 signalCond 被调用时，一定已经拿到锁，因此，锁实现了 waitCond 与 signalCond 之间的 happen-before 关系：先执行的 waitCond 带来的影响必定可以被 signalCond 观察到。因此，我们可以在 waitCond 释放锁之前将自己标记为一个等待者，这样 signalCond 在获得锁后就可以看到这个等待者，在触发时，就不会跳过这个等待者。  
