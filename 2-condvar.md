@@ -25,7 +25,7 @@ while(!condvar)
 
 # 初探
 
-最基本地，我们我们可以对外提供一个函数来实现等待，对应地：
+最基本地，提供一个函数来实现等待，对应地：
 
 ```
 void waitCond(Condvar &cond)
