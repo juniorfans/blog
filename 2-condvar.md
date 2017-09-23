@@ -88,7 +88,7 @@ unlock(g_mutex);
 
 和上一个版本不同的是，只要 thread1 先抢到锁，就一定可以保证 waitCond 先执行。这就保证了得到的行为与程序员的设计是一致地！  
 但这里有两个陷阱：  
-1.如果按设想的来，thread1 先抢到锁，进入等待。但十分隐蔽的一个错误是：thread2 永远无法获得锁，也就不会有机会调用 signalCond。这会导致 thread1 和 thread2 死锁！  
+1.如果按设想的来，thread1 先抢到锁，进入等待。十分隐蔽的一个错误是：thread2 永远无法获得锁，也就不会有机会调用 signalCond。这会导致 thread1 和 thread2 死锁！  
 2.如果 thread2 先执行呢？那岂不是会造成 signalCond 先于 waitCond 执行？而这会造成后者死等待！  
 下面我们一个一个解决这些问题。
 
