@@ -212,11 +212,9 @@ unlock(__inner_mutex);
 
 需要注意的是，上面的 G1, G2本身其实与`释放锁-等待`原子化无关，它主要是用于解决 Releax-MO 中的 ABA 问题的。futex 锁是用于提高等待的效率的，最大程度减少陷入到内核模式的次数，本文限于篇幅也不再探讨，
 #结语
-本文从最基本的想法开始，一步一步探讨了条件变量的设计与实现。实际上，还有很多的细节需要考虑：效率，ABA问题，内存可见性问题，等等，这些无一不需要殚精竭虑！这些本文都没有涉及，有兴趣深入地，推荐使用在线C++源码阅读站看看 glibc 这块的源码：
-[glibc-pthread_cond_wait][1]
-[glibc-pthread_cond_signal][2]
+本文从最基本的想法开始，一步一步探讨了条件变量的设计与实现。实际上，还有很多的细节需要考虑：效率，ABA问题，内存可见性问题，等等，这些无一不需要殚精竭虑！这些本文都没有涉及，有兴趣深入地，推荐使用在线C++源码阅读站看看 glibc 这块的源码：[glibc-pthread_cond_wait][1], [glibc-pthread_cond_signal][2]。
 
-[1][https://code.woboq.org/userspace/glibc/nptl/pthread_cond_wait.c.html]
+[1]: https://code.woboq.org/userspace/glibc/nptl/pthread_cond_wait.c.html
 
-[2][https://code.woboq.org/userspace/glibc/nptl/pthread_cond_signal.c.html]
+[2]: https://code.woboq.org/userspace/glibc/nptl/pthread_cond_signal.c.html
 
