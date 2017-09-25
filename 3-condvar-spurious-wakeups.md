@@ -52,11 +52,13 @@ unlock(mutex);
 - 释放用户锁
 
 
-做唤醒线程后，线程 A 被重新加入到线程调度队列中(此时线程 A 不会立即运行)。若此时正好有另一个等待线程 C，执行第 1 代码，顺利拿到锁并且往后面执行直到它重置 condIsTrue 为 false(注意线程 C 因为 condIsTrue 为 true 故不会执行 waitCond)。当线程 A 被调度，获得了锁并往后执行时，condIsTrue 的值已经为 flase 了，assert(condIsTrue) 这行会报错。这个问题被称为“虚假唤醒”。
+做唤醒线程后，线程 A 被重新加入到线程调度队列中(此时线程 A 不会立即运行)。若此时正好有另一个等待线程 C，执行第 1 行代码，顺利拿到锁并且往后面执行直到它重置 condIsTrue 为 false(注意线程 C 因为 condIsTrue 为 true 故不会执行 waitCond)。当线程 A 被调度，获得了锁并往后执行时，condIsTrue 的值已经为 flase 了，assert(condIsTrue) 这行会报错。这个问题被称为“虚假唤醒”。
 
 ##解决
 上一篇文章[“条件变量的设计与实现”](https://juniorfans.gitbooks.io/blog/content/2-condvar.html)时，指出一个问题：等待线程释放锁并进入等待原子化，与此处虚假唤醒问题有异曲同工之妙。
+
 **释放锁并进入等待原子化**：unlock 和 switchToCoreAndWait 之间可能被其它线程抢占执行，因 unlock 后锁已释放
+
 **虚假唤醒**：switchToCoreAndWait 和 lock 之间可能被其它线程抢占执行，因 switchToCoreAndWait 后锁已释放
 有了解决前一个问题的经验，我们大致可以猜测，后一个问题也不那么简单，至少，如果我们通过加入另外一个锁的手段，可能引发死锁问题，这就像上面提到的那篇文章描述的“**将钥匙投进了上了锁的个人信箱里面**”。
 review 这个问题，发现关键点在于：**当有一个线程即将被唤醒即将获得锁时，禁止其它线程获得同一个锁**。像上一个问题的解决方案：利用已存在的 happen-before 关系标记这种场景，在后续发生的线程中识别并处理这种异常。
