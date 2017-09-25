@@ -49,7 +49,9 @@ unlock(mutex);
 如上，设线程 A 在第 2.2 行代码处阻塞以等待 condIsTrue 为真。设线程 B 是唤醒线程，它做以下事情：
 - 更改了条件，设置为 true
 - 唤醒线程
-- 释放用户锁。
+- 释放用户锁
+
+
 做唤醒线程后，线程 A 被重新加入到线程调度队列中(此时线程 A 不会立即运行)。若此时正好有另一个等待线程 C，执行第 1 代码，顺利拿到锁并且往后面执行直到它重置 condIsTrue 为 false(注意线程 C 因为 condIsTrue 为 true 故不会执行 waitCond)。当线程 A 被调度，获得了锁并往后执行时，condIsTrue 的值已经为 flase 了，assert(condIsTrue) 这行会报错。这个问题被称为“虚假唤醒”。
 
 ##解决
