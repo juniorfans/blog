@@ -57,9 +57,10 @@ unlock(mutex);
 ##解决
 上一篇文章[“条件变量的设计与实现”](https://juniorfans.gitbooks.io/blog/content/2-condvar.html)时，指出一个问题：等待线程释放锁并进入等待原子化，与此处虚假唤醒问题有异曲同工之妙。
 
-**释放锁并进入等待原子化**：unlock 和 switchToCoreAndWait 之间可能被其它线程抢占执行，因 unlock 后锁已释放
+- **释放锁并进入等待原子化**：unlock 和 switchToCoreAndWait 之间可能被其它线程抢占执行，因 unlock 后锁已释放
 
-**虚假唤醒**：switchToCoreAndWait 和 lock 之间可能被其它线程抢占执行，因 switchToCoreAndWait 后锁已释放
+- **虚假唤醒**：switchToCoreAndWait 和 lock 之间可能被其它线程抢占执行，因 switchToCoreAndWait 后锁已释放
+
 有了解决前一个问题的经验，我们大致可以猜测，后一个问题也不那么简单，至少，如果我们通过加入另外一个锁的手段，可能引发死锁问题，这就像上面提到的那篇文章描述的“**将钥匙投进了上了锁的个人信箱里面**”。
 review 这个问题，发现关键点在于：**当有一个线程即将被唤醒即将获得锁时，禁止其它线程获得同一个锁**。像上一个问题的解决方案：利用已存在的 happen-before 关系标记这种场景，在后续发生的线程中识别并处理这种异常。
 然而，因为对用户锁加锁或解锁已经脱离了条件变量的范畴：`pthread_mutex_lock` 与 `pthread_mutex_unlock` 只接受一个 mutex，所以我们可能实现更改 mutex 的设计。当然可能存在其它的解决方案，但我预期应该更复杂。
