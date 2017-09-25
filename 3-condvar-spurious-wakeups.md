@@ -100,7 +100,9 @@ unlock(mutex);
 实际上，这也是标准的做法，不论是在 glibc 上，还是在 Windows API 上。
 
 ##一些有用的参考
+
 [does-c-sharp-monitor-wait-suffer-from-spurious-wakeups][1]
+
 [comp.programming.threads][2]
 
 [1]: https://stackoverflow.com/questions/1461913/does-c-sharp-monitor-wait-suffer-from-spurious-wakeups/1461956#1461956 
