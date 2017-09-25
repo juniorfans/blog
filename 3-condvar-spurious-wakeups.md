@@ -40,7 +40,7 @@ unlock(mutex);        //5
 
 
 ```
-/**********waiter thread**********/
+/**********signaler thread**********/
 lock(mutex);    
 condIsTrue = true;
 signalCond(condVar);
@@ -85,7 +85,7 @@ unlock(mutex);        //5
 
 
 ```
-/**********waiter thread**********/
+/**********signaler thread**********/
 lock(mutex);    
 condIsTrue = true;
 signalCond(condVar);
