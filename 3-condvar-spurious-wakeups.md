@@ -20,18 +20,38 @@ Joe Duffy's Concurrent Programming On Windows 一书中有这一段描述：
 从代码的角度来说明：
 
 ```
-//waiter thread
+/**********waiter thread**********/
 lock(mutex);    //1
+if(!condIsTrue)
+{
+    //waitCond(condVar, mutex);
+    ////////////// three atomic parts of condWait /////////////////
+    unlock(mutex);    //2.1
+    switchToCoreAndWait(condVar);    //2.2
+    lock(mutex);    //2.3
+    //////////////////////////////////////////////////////////////
+}
 
-////////////// three atomic parts of condWait /////////////////
-unlock(mutex);
-switchToCoreAndWait(cond);
-lock(mutex);
-//////////////////////////////////////////////////////////////
-
-
-unlock(mutex);    //3
+assert(condIsTrue);    //3
+//do something while condIsTrue
+condIsTrue=false;     //4，条件为真，做一些事情后重置为 flase，保证只处理一次
+unlock(mutex);        //5
 ```
+
+
+```
+/**********waiter thread**********/
+lock(mutex);    
+condIsTrue = true;
+signalCond(condVar);
+unlock(mutex); 
+```
+如上，设线程 A 在第 2.2 行代码处阻塞以等待 condIsTrue 为真。设线程 B 是唤醒线程，它做以下事情：
+- 更改了条件，设置为 true
+- 唤醒线程
+- 释放用户锁。
+做唤醒线程后，线程 A 被重新加入到线程调度队列中(此时线程 A 不会立即运行)。若此时正好有另一个等待线程 C，执行第 1 代码，顺利拿到锁并且往后面执行直到它重置 condIsTrue 为 false(注意线程 C 在调用 switchToCoreAndWait 时并不会进入等待了，因为 condVar 已经被唤醒了,)
+
 
 #深入
 
