@@ -63,7 +63,7 @@ unlock(mutex);
 
 有了解决前一个问题的经验，我们大致可以猜测，后一个问题也不那么简单，至少，如果我们通过加入另外一个锁的手段，可能引发死锁问题，这就像上面提到的那篇文章描述的“**将钥匙投进了上了锁的个人信箱里面**”。
 review 这个问题，发现关键点在于：**当有一个线程即将被唤醒即将获得锁时，禁止其它线程获得同一个锁**。像上一个问题的解决方案：利用已存在的 happen-before 关系标记这种场景，在后续发生的线程中识别并处理这种异常。
-然而，因为对用户锁加锁或解锁已经脱离了条件变量的范畴：`pthread_mutex_lock` 与 `pthread_mutex_unlock` 只接受一个 mutex，所以我们可能实现更改 mutex 的设计。当然可能存在其它的解决方案，但我预期应该更复杂。
+然而，因为对用户锁加锁或解锁已经脱离了条件变量的范畴：`pthread_mutex_lock` 与 `pthread_mutex_unlock` 只接受一个 mutex，所以我们可能需要更改 mutex 的设计以解决这个问题。当然可能存在其它的解决方案，但我预期应该更复杂。
 David R. Butenhof in "Programming with POSIX Threads" (p. 80):
 > Spurious wakeups may sound strange, but on some multiprocessor systems, making condition wakeup completely predictable might substantially slow all condition variable operations.
 
