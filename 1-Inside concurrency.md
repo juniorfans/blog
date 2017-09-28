@@ -161,7 +161,23 @@ release 语义
 > Once you digest the above definitions, it’s not hard to see that acquire and release semantics can be achieved using simple combinations of the memory barrier types I described at length in my previous post. The barriers must (somehow) be placed after the read-acquire operation, but before the write-release. [Update: Please note that these barriers are technically more strict than what’s required for acquire and release semantics on a single memory operation, but they do achieve the desired effect.]
 
 回到上面的问题，很显示, 由于实现原因，release 语义后面的 acquire 语义不会乱序.
+举例说明 acquire 和 release 的应用.
 
+```
+//thread1
+x = acquire(a);
+y = b;
+
+
+//thread2
+b = 1;
+release(&a, 2);
+
+```
+thread2 设置 a, b 值，thread1 观察. 在 thread1 中，若 y=1 则 x=2。
+thread2 中，若 a=2 被写入则 b=1 必被写入，这是 release 语义规定的：所有发生在 release 前面的读写发生在之前。
+thread1 中，若 y=b 被读入，则 x=a 必被读入，这是 acquire 语义规定的：所有发生在 acquire 后面的读写发生在之后。
+此处 acquire 与 release 一起使用就实现了后面的 syncronizes-with 关系。
 
 ##syncronizes-with 关系
 **概览**
