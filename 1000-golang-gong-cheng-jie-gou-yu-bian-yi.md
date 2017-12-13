@@ -18,7 +18,7 @@
 #试验准备
 现在有一个 go 工程目录结构如下图所示
 
-![](/assets/go-lang-dir.png)
+![](/assets/golang/go-lang-dir.png)
 
 代码内容如下
 
@@ -207,18 +207,18 @@ func QuickSort(values []int) {
 - ####编译不含main的文件
 当我们要编译的 go 文件的包名不含 main 函数，会是怎样的呢？继续试验。qsort.go **没有 main 函数，编译成功后它没有在任何地方生成任何文件**。而 sorter.go 中有 main 函数，它在当前目录下生成了 exe 文件。
 
-![](/golang/go-build-no-main.png)
+![](/assets/golang/go-build-no-main.png)
 
 - ####GOPATH 下的 src 目录被自动加上
 我们可以在 sorter 目录下，直接使用 ***go build main*** 来编译所有 main 目录下所有的 go 文件, sorter 下的 src 不用给出。
  
-![](/golang/go-build-gopath-auto-src.png)
+![](/assets/golang/go-build-gopath-auto-src.png)
 
 - ####如何编译整个工程
 遗憾，目前没有找到方法。但有一个替代的办法：我们一次性编译 main 目录下所有的文件，它们会将依赖的文件，库，都编译.（再强调: 上面说的不是 main 包，是 main 目录，这是因为 go build 后面的不是包名而是目录名）
 如上一个试验，我们使用 go build main 即可。我们进一步，只要设置了 GOPATH，我们可以在任何目录下 go build main 来编译所有GOPATH 下的 main 目录。
 
-![](/golang/go-build-gopath-main-anywhere.png)
+![](/assets/golang/go-build-gopath-main-anywhere.png)
 
 
 - ####main 函数不在 main 包
@@ -268,7 +268,7 @@ func main(){
 ```
 
 编译结果如下图：
-![](/golang/go-lang-package-nomain-main_func.png)
+![](/assets/golang/go-lang-package-nomain-main_func.png)
 
 编译ok 没有生成可执行程序，目前猜测是，当 main 函数不在 main 包里会被作为普通的函数，不被当成是程序的启动点。
 
@@ -322,7 +322,7 @@ func main(){
 
 继续测试，现在 sorter.go 和 qsort.go 都被打包到 main，且有 main 函数。我们现在编译整个工程，结果如下：
 
-![](/golang/go-build-multiple-main.png)
+![](/assets/golang/go-build-multiple-main.png)
 
 - ####目录名和包名不一致
 我们观察 bubblesort.go 这个文件，包名是 edgarlli, 但是它的目录名是 bubblesort,  虽然不一样但是编译成功了，且在 sorter.go 中成功地引用了这个模块：edgarlli.bubblesort，注意在 sorter.go 中 import 的是：
