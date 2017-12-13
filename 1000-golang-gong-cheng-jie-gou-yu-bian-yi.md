@@ -11,18 +11,18 @@
 - 5.当一个目录下存在引入不同包的 go 文件，使用 go build 会报错。
 - 6.GOPATH 下的目录下的 src 目录可以被自动忽略，这是因为， go 语言假设所有工程的源码都放于 src 文件夹下。看后面的举例即可明白。
 
+. 折叠
+真的吗
+
 #试验准备
 现在有一个 go 工程目录结构如下图所示
 
-
 ![](/assets/go-lang-dir.png)
 
-
-
-插入代码 what is 
-
-
-```package main
+代码内容如下
+***sorter.go***
+```go
+package main
 
 import "bufio"
 import "flag"
@@ -114,12 +114,83 @@ func main() {
 ```
 
 
+***bubblesort.go***
+```
+package edgarlli
 
-bubblesort.go 和 bubblesort_test.go 都 package 到 bubblesort 包.
-qsort.go 和 qsort_test.go 都 package 到 qsort 包.
-sorter.go 则 package 到 main 包.
-我们将顶层的 sorter 目录设置为 GOPATH.
-下面开始试验。
+
+import "fmt"
+
+func BubbleSort(values []int) {
+	flag := true
+	for i := 0; i < len(values)-1; i++ {
+		flag = true
+		for j := 0; j < len(values)-i-1; j++ {
+			if values[j] > values[j+1] {
+				values[j], values[j+1] = values[j+1], values[j]
+				flag = false
+			} // end if
+		} // end for j = ...
+		if flag == true {
+			break
+		}
+	} // end for i = ...
+}
+
+func main(){
+	fmt.Println("a fake main in bubblesort")
+}
+```
+
+***qsort.go***
+```
+package qsort
+import "fmt"
+
+func quickSort(values []int, left, right int) {
+	temp := values[left]
+	p := left
+	i, j := left, right
+	for i <= j {
+		for j >= p && values[j] >= temp {
+			j--
+		}
+		if j >= p {
+			values[p] = values[j]
+			p = j
+		}
+		if values[i] <= temp && i <= p {
+			i++
+		}
+		if i <= p {
+			values[p] = values[i]
+			p = i
+		}
+	}
+	values[p] = temp
+	if p-left > 1 {
+		quickSort(values, left, p-1)
+	}
+	if right-p > 1 {
+		quickSort(values, p+1, right)
+	}
+}
+func QuickSort(values []int) {
+	quickSort(values, 0, len(values)-1)
+}
+
+func main(){
+	fmt.Println("a fake main in bubblesort")
+}
+```
+
+
+注意代码中的几点:
+- bubblesort.go 和 bubblesort_test.go 都 package 到 bubblesort 包.
+- qsort.go 和 qsort_test.go 都 package 到 qsort 包.
+- sorter.go 则 package 到 main 包.
+
+我们将顶层的 sorter 目录设置为 GOPATH，开始试验。
 
 #试验进行时
 
