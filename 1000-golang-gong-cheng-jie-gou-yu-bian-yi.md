@@ -20,8 +20,9 @@
 ![](/assets/go-lang-dir.png)
 
 代码内容如下
-***sorter.go***
+
 ```go
+//sorter.go
 package main
 
 import "bufio"
@@ -114,8 +115,8 @@ func main() {
 ```
 
 
-***bubblesort.go***
 ```
+//bubblesort.go
 package edgarlli
 
 
@@ -142,8 +143,9 @@ func main(){
 }
 ```
 
-***qsort.go***
+
 ```
+//qsort.go
 package qsort
 import "fmt"
 
