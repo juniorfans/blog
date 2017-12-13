@@ -202,12 +202,23 @@ func QuickSort(values []int) {
 
 需要注意还有两点：
 编译成功后生成的文件会放置在当前位置。
-若 go build 不指定参数则生成文件名为 main.exe
+若 go build 不指定参数则生成文件名为 main.exe。如果我们编译不含 main 的文件会得到什么结果呢？
 
 - ####编译不含main的文件
 当我们要编译的 go 文件的包名不含 main 函数，会是怎样的呢？继续试验。qsort.go **没有 main 函数，编译成功后它没有在任何地方生成任何文件**。而 sorter.go 中有 main 函数，它在当前目录下生成了 exe 文件。
 
 ![](/golang/go-build-no-main.png)
+
+- ####GOPATH 下的 src 目录被自动加上
+我们可以在 sorter 目录下，直接使用 ***go build main*** 来编译所有 main 目录下所有的 go 文件, sorter 下的 src 不用给出。
+ 
+ toadd
+
+- ####如何编译整个工程
+遗憾，目前没有找到方法。但有一个替代的办法：我们一次性编译 main 目录下所有的文件，它们会将依赖的文件，库，都编译.（再强调: 上面说的不是 main 包，是 main 目录，这是因为 go build 后面的不是包名而是目录名）
+如上一个试验，我们使用 go build main 即可。我们进一步，只要设置了 GOPATH，我们可以在任何目录下 go build main 来编译所有GOPATH 下的 main 目录。
+to add
+
 
 
 - ####main 函数不在 main 包
@@ -256,11 +267,14 @@ func main(){
 }
 ```
 
+编译结果如下图：
+![](/golang/go-lang-package-nomain-main_func.png)
 
+编译ok，目前猜测是，当 main 函数不在 main 包里会被作为普通的函数，不被当成是程序的启动点。
 
 
 - ####main 包下没有main函数
-如果一个 go 文件 package 的是 main 包，但没有 main 函数，会有怎样的编译结果？我们更改 qsort.go 文件，将包名改为 main 但不增加 main 函数，如下:
+如果一个 go 文件 package 的是 main 包，但没有 main 函数，会有怎样的编译结果？我们再次更改 qsort.go 文件，将包名改为 main 但不增加 main 函数，如下:
 
 ```
 //qsort.go 打包到 main 包但不含 main 函数
@@ -306,8 +320,8 @@ func QuickSort(values []int) {
 很明显，报错正是: main 包下 main 函数缺少定义。这正是第 7 点规则。
 
 
-- ####如何编译整个工程
-遗憾，目前没有找到方法。
+
+
 
 - ####两个或以上文件都有 main
 保持上面的更改，继续测试，现在 sorter.go 和 qsort.go 都被打包到 main，且有 main 函数。我们现在编译
