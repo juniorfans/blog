@@ -322,9 +322,7 @@ func main(){
 
 继续测试，现在 sorter.go 和 qsort.go 都被打包到 main，且有 main 函数。我们现在编译整个工程，结果如下：
 
-
-
-toadd
+![](/golang/go-build-multiple-main.png)
 
 - ####目录名和包名不一致
 我们观察 bubblesort.go 这个文件，包名是 edgarlli, 但是它的目录名是 bubblesort,  虽然不一样但是编译成功了，且在 sorter.go 中成功地引用了这个模块：edgarlli.bubblesort，注意在 sorter.go 中 import 的是：
