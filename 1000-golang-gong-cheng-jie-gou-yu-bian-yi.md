@@ -10,6 +10,7 @@
 - 4.go build 后面可以不接参数，表示编译当前目录下的所有 go 文件. 当前目录下若没有 go 文件则会编译报错。
 - 5.当一个目录下存在引入不同包的 go 文件，使用 go build 会报错。
 - 6.GOPATH 下的目录下的 src 目录可以被自动忽略，这是因为， go 语言假设所有工程的源码都放于 src 文件夹下。看后面的举例即可明白。
+- 7.main 包下的 go 源文件必须含有 main 函数
 
 . 折叠
 真的吗
@@ -208,6 +209,56 @@ func QuickSort(values []int) {
 
 ![](/golang/go-build-no-main.png)
 
+
+- ####main 函数不在 main 包
+如果一个 go 文件 package 不是 main 包，但含有 main 函数，会有怎样的编译结果？我们更改 qsort.go 文件，增加 main 函数，如下:
+
+```
+//qsort.go 包名不是 main 但含有 main 函数
+package qsort
+
+import "fmt"
+
+func quickSort(values []int, left, right int) {
+	temp := values[left]
+	p := left
+	i, j := left, right
+	for i <= j {
+		for j >= p && values[j] >= temp {
+			j--
+		}
+		if j >= p {
+			values[p] = values[j]
+			p = j
+		}
+		if values[i] <= temp && i <= p {
+			i++
+		}
+		if i <= p {
+			values[p] = values[i]
+			p = i
+		}
+	}
+	values[p] = temp
+	if p-left > 1 {
+		quickSort(values, left, p-1)
+	}
+	if right-p > 1 {
+		quickSort(values, p+1, right)
+	}
+}
+func QuickSort(values []int) {
+	quickSort(values, 0, len(values)-1)
+}
+
+func main(){
+	fmt.Println("a fake main in qsort")
+}
+```
+
+
+
+
 - ####main 包下没有main函数
 如果一个 go 文件 package 的是 main 包，但没有 main 函数，会有怎样的编译结果？我们更改 qsort.go 文件，将包名改为 main 但不增加 main 函数，如下:
 
@@ -250,9 +301,22 @@ func QuickSort(values []int) {
 
 我们编译这个文件，发现编译报错了:
 
+![](/golang/go-lang-package-without-main_func-.png)
+
+很明显，报错正是: main 包下 main 函数缺少定义。这正是第 7 点规则。
+
+
+- ####如何编译整个工程
+遗憾，目前没有找到方法。
 
 - ####两个或以上文件都有 main
+保持上面的更改，继续测试，现在 sorter.go 和 qsort.go 都被打包到 main，且有 main 函数。我们现在编译
 
 
 
+
+
+
+
+- ####目录名和包名不一致
 
