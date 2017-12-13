@@ -206,10 +206,49 @@ func QuickSort(values []int) {
 - ####编译不含main的文件
 当我们要编译的 go 文件的包名不含 main 函数，会是怎样的呢？继续试验。qsort.go **没有 main 函数，编译成功后它没有在任何地方生成任何文件**。而 sorter.go 中有 main 函数，它在当前目录下生成了 exe 文件。
 
+![](/golang/go-build-no-main.png)
 
 - ####main 包下没有main函数
-如果一个 go 文件 package 的是 main 包，但没有 main 函数，会有怎样的编译结果？我们更改 qsort.go 文件，将包名改为 main 但不增加 main 函数，编译结果如下:
+如果一个 go 文件 package 的是 main 包，但没有 main 函数，会有怎样的编译结果？我们更改 qsort.go 文件，将包名改为 main 但不增加 main 函数，如下:
 
+```
+//qsort.go 打包到 main 包但不含 main 函数
+package main
+
+func quickSort(values []int, left, right int) {
+	temp := values[left]
+	p := left
+	i, j := left, right
+	for i <= j {
+		for j >= p && values[j] >= temp {
+			j--
+		}
+		if j >= p {
+			values[p] = values[j]
+			p = j
+		}
+		if values[i] <= temp && i <= p {
+			i++
+		}
+		if i <= p {
+			values[p] = values[i]
+			p = i
+		}
+	}
+	values[p] = temp
+	if p-left > 1 {
+		quickSort(values, left, p-1)
+	}
+	if right-p > 1 {
+		quickSort(values, p+1, right)
+	}
+}
+func QuickSort(values []int) {
+	quickSort(values, 0, len(values)-1)
+}
+```
+
+我们编译这个文件，发现编译报错了:
 
 
 - ####两个或以上文件都有 main
