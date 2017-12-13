@@ -329,6 +329,8 @@ func main(){
 
 ![](/assets/golang/go-build-multiple-main.png)
 
+编译的结果显示，sorter.go 中引用 qsort 失败，因为它不是一个可引用的包，而是一个程序！这是因为 qsort 是 main 包且有 main 函数，所以它不能被引入，导致编译出错。
+
 - ####目录名和包名不一致
 我们观察 bubblesort.go 这个文件，包名是 edgarlli, 但是它的目录名是 bubblesort,  虽然不一样但是编译成功了，且在 sorter.go 中成功地引用了这个模块：edgarlli.bubblesort，注意在 sorter.go 中 import 的是：
 
