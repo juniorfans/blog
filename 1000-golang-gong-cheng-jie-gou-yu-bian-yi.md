@@ -198,7 +198,7 @@ func QuickSort(values []int) {
 使用 go build 编译单个文件，go 编译器是如何找到文件的呢？
 如下图的试验，我们可以直接在 GOPATH 下使用相对目录编译 sorter.go，或者到那个文件所在目录，直接使用 go build 编译那个文件，或者直接 go build 带参数，都是可以的。抑或是在非 GOPATH 下使用相对目录编译那个文件，这一点说明了编译单个文件时，查找文件的方式是基于当前目录的，与 GOPATH 无关。
 
-![编译时如何找到单个文件](/assets/go-build-single-file.png)
+![编译时如何找到单个文件](/assets/golang/go-build-single-file.png)
 
 需要注意还有两点：
 编译成功后生成的文件会放置在当前位置。
@@ -318,7 +318,12 @@ func main(){
 	fmt.Println("a real main in qsort")
 }
 ```
+编译结果如下:
 
+![](/assets/golang/go-lang-package-without-main_func-.png)
+
+
+- ####main包下有多个main函数
 
 继续测试，现在 sorter.go 和 qsort.go 都被打包到 main，且有 main 函数。我们现在编译整个工程，结果如下：
 
