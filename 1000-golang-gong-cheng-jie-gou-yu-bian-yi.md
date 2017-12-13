@@ -212,13 +212,13 @@ func QuickSort(values []int) {
 - ####GOPATH 下的 src 目录被自动加上
 我们可以在 sorter 目录下，直接使用 ***go build main*** 来编译所有 main 目录下所有的 go 文件, sorter 下的 src 不用给出。
  
- toadd
+![](/golang/go-build-gopath-auto-src.png)
 
 - ####如何编译整个工程
 遗憾，目前没有找到方法。但有一个替代的办法：我们一次性编译 main 目录下所有的文件，它们会将依赖的文件，库，都编译.（再强调: 上面说的不是 main 包，是 main 目录，这是因为 go build 后面的不是包名而是目录名）
 如上一个试验，我们使用 go build main 即可。我们进一步，只要设置了 GOPATH，我们可以在任何目录下 go build main 来编译所有GOPATH 下的 main 目录。
-to add
 
+![](/golang/go-build-gopath-main-anywhere.png)
 
 
 - ####main 函数不在 main 包
@@ -270,7 +270,7 @@ func main(){
 编译结果如下图：
 ![](/golang/go-lang-package-nomain-main_func.png)
 
-编译ok，目前猜测是，当 main 函数不在 main 包里会被作为普通的函数，不被当成是程序的启动点。
+编译ok 没有生成可执行程序，目前猜测是，当 main 函数不在 main 包里会被作为普通的函数，不被当成是程序的启动点。
 
 
 - ####main 包下没有main函数
@@ -279,6 +279,8 @@ func main(){
 ```
 //qsort.go 打包到 main 包但不含 main 函数
 package main
+
+import "fmt"
 
 func quickSort(values []int, left, right int) {
 	temp := values[left]
@@ -311,26 +313,22 @@ func quickSort(values []int, left, right int) {
 func QuickSort(values []int) {
 	quickSort(values, 0, len(values)-1)
 }
+
+func main(){
+	fmt.Println("a real main in qsort")
+}
 ```
 
-我们编译这个文件，发现编译报错了:
 
-![](/golang/go-lang-package-without-main_func-.png)
-
-很明显，报错正是: main 包下 main 函数缺少定义。这正是第 7 点规则。
+继续测试，现在 sorter.go 和 qsort.go 都被打包到 main，且有 main 函数。我们现在编译整个工程，结果如下：
 
 
 
-
-
-- ####两个或以上文件都有 main
-保持上面的更改，继续测试，现在 sorter.go 和 qsort.go 都被打包到 main，且有 main 函数。我们现在编译
-
-
-
-
-
-
+toadd
 
 - ####目录名和包名不一致
+我们观察 bubblesort.go 这个文件，包名是 edgarlli, 但是它的目录名是 bubblesort,  虽然不一样但是编译成功了，且在 sorter.go 中成功地引用了这个模块：edgarlli.bubblesort，注意在 sorter.go 中 import 的是：
 
+```import "algorithm/bubblesort"``` 
+
+所以结论是，import 时是路径，而代码中使用的是包名.函数名/类 的方式。
