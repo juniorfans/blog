@@ -4,9 +4,11 @@
 本文更像是一篇记录文，记录使用 idea 作为编辑器写 golang 踩过的坑。
 
 #安装
-idea 安装网上可找的资料很多，不阐述。
-go lang sdk 安装也比较容易，直接去官网下载最新版即可。安装完成后需要设置两个环境变量: GOPATH, GOROOT，golang 编译时会去这两个目录下找目标，GOROOT 即是 golang 的安装目录，GOPATH 是项目目录。
-为了在 idea 里面联动 golang 编译器，代码自动完成，工程管理，需要安装 idea 的 golang-plugin，这个我们可以直接在 iead 的插件管理里面在线安装，或是下载 zip 包手动安装，问题不大。
+- idea 安装网上可找的资料很多，不阐述。
+- go lang sdk 安装也比较容易，直接去官网下载最新版即可。安装完成后需要设置两个环境变量: GOPATH, GOROOT，golang 编译时会去这两个目录下找目标，GOROOT 即是 golang 的安装目录，GOPATH 是项目目录。
+- golang-plugin 为了在 idea 里面联动 golang 编译器，工程管理，需要安装 idea 的 golang-plugin，这个我们可以直接在 iead 的插件管理里面在线安装，或是下载 zip 包手动安装，问题不大。
+- gocode 这个提供了代码自动完成功能，我们也需要安装. 
+运行 go get -u -ldflags -H=windowsgui github.com/nsf/gocode 会在 GOPATH 下建立 src/github.com/nsf/gocode 文件夹。在无法访问外网情况下，目录为空。离线下载后将文件放入此目录，再运行 go install 即可安装 gocode。
 
 #编译
 不使用 idea 的编译方式，上一篇文章已经详细说明了。
