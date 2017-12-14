@@ -220,6 +220,7 @@ func QuickSort(values []int) {
 
 ![](/assets/golang/go-build-gopath-main-anywhere.png)
 
+***当 GOPATH 有多个目录时，经过试验，会选出排在最前面有 main 目录的工程进行编译。***
 
 - ####main 函数不在 main 包
 如果一个 go 文件 package 不是 main 包，但含有 main 函数，会有怎样的编译结果？我们更改 qsort.go 文件，增加 main 函数，如下:
