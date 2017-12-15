@@ -7,39 +7,51 @@
 ##开发机无外网
 设置 C 上的网络代理信息为：S 的局域网 IP 和开启代理的端口。但 C 仍无外网访问。经过排查，发现 C 的 request 到达了 S ，但是 S 没有回包。因此我们可以猜测到是因为 S 没有收到外网的 response 因此也就暂时没有给 C response。为什么 S 不能访问外网呢？突然想到，S 浏览器上设置过公司的网络代理服务器。所以直接把 S 的代理服务器信息设置到 S 的 CCProxy 上。试验成功，S 收到了 response 并且把这个 response 给到了 C。代理成功。这个概念就是多级代理。
 
+![](/assets/crack/two_level_proxy.png)
+
 ##CCProxy破解
 公司的网络策略本来就是禁止开发机 C 访问外网的。后面公司通过流量监控，发现 S 上名为 "CCProxy" 的进程流量很大，而这个进程名一看就知道是干啥的，所以被警告了。而有时我们的开发机 C 上确实需要访问外网，比如代码编辑器更新插件，下载文件什么的。所以萌生了将 CCProxy 这个程序改名再运行的想法。
 然而将 CCProxy.exe 改名为 firefox.exe 后，发现进程启动不了，没有任何错误信息。这就很奇怪了。一一尝试 CCProxy 安装目录下的配置，mui 文件，均不得解决。于是，我们猜测，是不是 CCProxy.exe 程序中对“本文件”的文件名进行了校验？
-这个想法很容易验证：直接使用 exe 编辑器，将 CCProxy.exe 文件中的字符串 "CCProxy" 替换为 firefox。确实可以打开了！(下图展示的是可以将 firefox 替换回 CCProxy)
+这个想法很容易验证：直接使用 exe 编辑器，将 CCProxy.exe 文件中的字符串 "CCProxy" 替换为 firefox。确实可以打开了！(下图展示的是可以将 firefox 替换回 CCProxy, 使用一个名为“软件手术刀的程序”，网上可下载)
 
+![](/assets/crack/replace_name.png)
 
 
 然而事情并没有结束，虽然成功运行替换文件名之后的 firefox.exe，但是程序无法实现代码，因为此时程序的流量监控里面没有打印任何信息出来。我们去看它的运行日志，打开后看到有这样的报错：CheckEXE Failed。
 那说明程序中不仅校验了程序名字，还使用了其它的校验。我们需要借助更高级的工具，可能需要修改程序的逻辑。如下图所示，我们使用逆向工具 IDA 打开 firefox.exe，并且搜索字符串 CheckEXE Failed：
 
+![](/assets/crack/search_check_error.png)
+
 最后两行表示这个字符串有丙处定义，开始两行表示这个字符串有两处引用的地方。双击引用的地方，在汇编代码中可以看到 IDA 解析出来的字符串：
+
+![](/assets/crack/refer_1.png)
 
 对于不熟悉汇编的我，汇编太难看了，还是看图直接：直接按“空格健”进入图表模式，果然好看多了，如下三张图：
 
-
-
+![](/assets/crack/struct_1.png)
+![](/assets/crack/struct_2.png)
+![](/assets/crack/struct_3.png)
 
 图中的红绿线分别表示失败，成功的分支，蓝色线表示不用分支直接往后执行。
 我们重点需要看 CheckEXE Failed 前面分支的地方：只有前面校验失败，才会用到这个字符串。我们不断往上看，直到下面这个子过程，它调用了 GetModuleFileNameW 函数和 MapFileAndCheckSumW，
-
-target_code
-
+![](/assets/crack/target_code.png)
 
 通过查询 MSDN 可知， MapFileAndCheckSumW 是编译器提供的一种手段，用于保护程序不被修改。支持的方式是：通过设置，告诉编译器需要此支持。那么编译器在编译链接完成后，会生成一个 checksum 放于输出文件(程序文件)某个地方，程序自己可以调用 MapFileAndCheckSumW 函数进行校验。
-因此，我们大致可以断定，CCProxy 就是使用了这个手法来完成自校验的。因此，我们可以在上面那个关键过程的上面一个子过程  loc_14007AE24 调用完成后，让它走最右边的绿色分支，则它可以跳过那些校验。
-我们直接修改 loc\_14007AE24 这个子过程的最后一句代码 jge loc\_14007B162。为了完成修改，我们将鼠标指针放到那一句代码，再转到 HEX 文件视图，可以定位到相应的机器码 0F 8D 02 03 00 00
+因此，我们大致可以断定，CCProxy 就是使用了这个手法来完成自校验的。因此，我们可以在上面那个关键过程的上面一个子过程 ***loc_14007AE24*** 调用完成后，让它走最右边的绿色分支，则它可以跳过那些校验。
+我们直接修改 ***loc\_14007AE24*** 这个子过程的最后一句代码 ***jge loc\_14007B162***。
+为了完成修改，我们将鼠标指针放到那一句代码，再转到 HEX 浏览视图，可以定位到相应的机器码 0F 8D 02 03 00 00。
 
+![](/assets/crack/to_change_0.png)
 
-0F 8D 代表的汇编指令即是 JGE，我们需要将它反转，即：0F 8C
+![](/assets/crack/to_change_1.png)
 
+[这个页面][1] 比较友好地给出了汇编到机器码的转换。
+
+0F 8D 代表的汇编指令即是 JGE，我们需要将它反转，即：0F 8C。
 更改并保存后，启动 firefox.exe 即可正常代理了。
 
 
+[1]: http://blog.csdn.net/b_h_l/article/details/23522135
 
 
 
