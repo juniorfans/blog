@@ -13,7 +13,7 @@
 - 7.main 包下的 go 源文件必须含有 main 函数
 
 #试验准备
-现在有一个 go 工程目录结构如下图所示
+现在有一个 go 工程, sorter 目录结构如下图所示
 
 ![](/assets/golang/go-lang-dir.png)
 
