@@ -49,9 +49,11 @@
 
 0F 8D 代表的汇编指令即是 JGE，我们需要将它反转，即：0F 8C。
 更改并保存后，启动 firefox.exe 即可正常代理了。
+再附上另外一个好资源，可以试着去读懂机器代码：[读懂简单的机器代码][2]
 
 
 [1]: http://blog.csdn.net/b_h_l/article/details/23522135
+[2]: https://www.cnblogs.com/guocai/archive/2012/10/18/2730048.html
 
 
 
