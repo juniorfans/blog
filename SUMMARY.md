@@ -15,4 +15,5 @@
 * [3004-leveldb精读系列-key](3000-leveldbjing-du-xi-5217-key.md)
 * [3005-leveldb精读系列-version](3000-leveldbjing-du-xi-5217-snopshot.md)
 * [3006-leveldb精读系列-builder](3006-leveldbjing-duxi-5217-builder.md)
+* [3006-leveldb精读系列-基础设施](3006-leveldbjing-du-xi-5217-ji-chu-she-shi.md)
 
