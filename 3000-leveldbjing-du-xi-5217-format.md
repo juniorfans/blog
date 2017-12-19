@@ -118,12 +118,14 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
 }
 ```
 
-##2 leveldb 文件层次
+##3 leveldb sst 格式
+
+##4 leveldb 文件层次
 leveldb 存储数据的形式是 sst 文件，为了查找/写入数据的效率，对这些文件分总共7层进行管理（第0到6层）。第1层到第6层：每层的文件
 
 
 
-##3 leveldb 限制
+##5 leveldb 限制
 ###3.1 第0层文件的限制
 leveldb::config 中定义了第 0 层的文件有如下限制
 - 1.leveldb 多层存储结构最多 7 层
