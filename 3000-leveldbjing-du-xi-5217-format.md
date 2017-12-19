@@ -1,20 +1,22 @@
 #leveldb 中的 format
-##概述
+##1 概述
 本文讲述 leveldb 中文件层次（多级 sst + memtalbe），sst 文件格式，log 文件格式，Block 格式，比较器 comparetor。
-##leveldb 文件层次
-leveldb 存储数据的形式是 sst 文件，为了便于查找/写入数据，对这些文件作层次管理：从第 1 层到第 N 层
+##2 leveldb Block 格式
+
+##2 leveldb 文件层次
+leveldb 存储数据的形式是 sst 文件，为了查找/写入数据的效率，对这些文件分总共7层进行管理（第0到6层）。第1层到第6层：每层的文件
 
 
 
-##leveldb 限制
-###第0层文件的限制
+##3 leveldb 限制
+###3.1 第0层文件的限制
 leveldb::config 中定义了第 0 层的文件有如下限制
 - 1.leveldb 多层存储结构最多 7 层
 - 2.第 0 层的 sst 文件在达到 4 个即触发 compaction
 - 3.第 0 层的 sst 文件达到 8 个时就会降低写入的速度
 - 4.第 0 层的 sst 文件达到 12 个时会暂停写入
 
-###memtable 的限制
+###3.2 memtable 的限制
 还定义了 memtalbe 在 dump 到磁盘上的限制：memtable 最高作为第 2 层的 sst 写到磁盘。
 
 ```
