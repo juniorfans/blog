@@ -11,6 +11,7 @@ leveldb 中最细粒度的是 Key，包括 userkey，InternalKey，ParsedInterna
 下图展示的是 block 的格式。
 ![](/assets/leveldb/sst_block.bmp)
 
+每个 Block 有多个 entry，每个 entry 就是一个 Key-Value：shared_bytes 表示在一组 entry 里面，当前 entry 的 Key 与第一个 entry 的 Key 相同的前缀字节数。unshard\_bytes 即是当前 entry 独有的字节数，value\_bytes 即是当前 entry 的值的长度，unshared\_key\_data 是当前 entry 独有的 key 内容，
 老规矩，更多的细节见于代码注释。
 
 ```
