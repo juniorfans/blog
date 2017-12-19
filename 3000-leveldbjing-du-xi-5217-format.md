@@ -119,6 +119,14 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
 ```
 
 ##3 leveldb sst 格式
+sstable 是更高层次的存储，它组合了多个 Block，同时维持着它们的索引信息，结构如下图：
+![](/assets/leveldb/sst.bmp)
+
+sst 中多个 Block 是 Key 有序的。
+meta\_block 对应于一个 data\_block，保存data\_block中的key size/value size/kv counts之类的统计信息，当前版本未实现。
+metaindex\_block: 保存meta\_block的索引信息。当前版本未实现。
+index\_block: 每个 data\_block 的 offset/size 都会写入到这个 index\_block 中，起到索引的作用。
+footer: 文件末尾的固定长度的数据。保存着metaindex\_block和index\_block的索引信息, 为达到固定的长度，添加padding_bytes。最后有8个字节的magic校验。
 
 ##4 leveldb 文件层次
 leveldb 存储数据的形式是 sst 文件，为了查找/写入数据的效率，对这些文件分总共7层进行管理（第0到6层）。第1层到第6层：每层的文件
@@ -137,6 +145,7 @@ leveldb::config 中定义了第 0 层的文件有如下限制
 还定义了 memtalbe 在 dump 到磁盘上的限制：memtable 最高作为第 2 层的 sst 写到磁盘。
 
 ```
+//block_builder.cc
 namespace config {
 static const int kNumLevels = 7;
 
