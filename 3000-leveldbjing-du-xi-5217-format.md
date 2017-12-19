@@ -120,6 +120,7 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
 
 ##3 leveldb sst 格式
 sstable 是更高层次的存储，它组合了多个 Block，同时维持着它们的索引信息，结构如下图：
+
 ![](/assets/leveldb/sst.bmp)
 
 sst 中多个 Block 是 Key 有序的。
