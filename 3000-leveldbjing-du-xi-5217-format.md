@@ -11,8 +11,12 @@ leveldb 中最细粒度的是 Key，包括 userkey，InternalKey，ParsedInterna
 下图展示的是 block 的格式。
 ![](/assets/leveldb/sst_block.bmp)
 
-每个 Block 有多个 entry，每个 entry 就是一个 Key-Value：shared_bytes 表示在一组 entry 里面，当前 entry 的 Key 与第一个 entry 的 Key 相同的前缀字节数。unshard\_bytes 即是当前 entry 独有的字节数，value\_bytes 即是当前 entry 的值的长度，unshared\_key\_data 是当前 entry 独有的 key 内容，
-老规矩，更多的细节见于代码注释。
+###2.1 Block.entry
+每个 Block 有多个 entry，每个 entry 就是一个 Key-Value：shared_bytes 表示在一组 entry 里面，当前 entry 的 Key 与第一个 entry 的 Key 相同的前缀字节数。unshard\_bytes 即是当前 entry 独有的字节数，value\_bytes 即是当前 entry 的值的长度，unshared\_key\_data 是当前 entry 独有的 key 内容，value_data 即是值内容。从 entry 的定义来看，存储了 key 和 value 的长度及字节序列，它可以存储任意的字节流，哪怕是图片，这一点很棒！
+###2.2 Block
+Block 包括多组 entry。各组是一个独立“共用前缀存储”的单元。restarts 是一个数组，存储着各组第一个元素的字节位置。num\_of\_restarts 是 restarts 的元素个数。
+
+更多的细节见于代码注释。
 
 ```
 //block_builder.cc 文件
