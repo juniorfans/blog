@@ -23,4 +23,12 @@ Slice value() const
 virtual Status status()
 ```
 *seek* 系列函数很明显：定位，与此类似的还有 **Next**，**Prev**。**key** 和 **value** 更明显，返回当前节点的键值对。 **Valid** 和 **status** 函数是迭代器的状态(有效｜无效)。
+##Block::Iter
+这个迭代器用来遍历 Block，Block 的格式见 [3003-leveldb精读系列-format][1]
 
+
+
+
+
+
+[1]: 3003-leveldb精读系列-format
