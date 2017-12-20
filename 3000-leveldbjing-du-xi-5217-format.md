@@ -157,7 +157,8 @@ void Footer::EncodeTo(std::string* dst) const {
   assert(dst->size() == original_size + kEncodedLength);
 }
 ```
-table_builder.cc 代码比较重要，我们全部放在这儿
+
+所有生成 sst 的细节都在 table_builder.cc 中，我们全部放在这儿
 
 ```
 namespace leveldb {
