@@ -158,7 +158,7 @@ void Footer::EncodeTo(std::string* dst) const {
 }
 ```
 
-所有生成 sst 的细节都在 table_builder.cc 中，我们全部放在这儿
+所有生成 sst 的细节都在 table_builder.cc 中，我们把代码注释全部放在下面。
 
 ```
 namespace leveldb {
@@ -418,7 +418,7 @@ Status TableBuilder::Finish() {
 	//lzh: 接下来写入 index_block
     WriteBlock(&r->index_block, &index_block_handle);
   }
-  //lzh: 最后写入 footer: metaindex_block 的偏移大小和 index_block 的偏移大小
+  //lzh: 最后写入 footer: metaindex\_block 的偏移大小和 index\_block 的偏移大小
   if (ok()) {
     Footer footer;
     footer.set_metaindex_handle(metaindex_block_handle);
@@ -455,9 +455,7 @@ uint64_t TableBuilder::FileSize() const {
 
 
 ##4 leveldb 文件层次
-leveldb 存储数据的形式是 sst 文件，为了查找/写入数据的效率，对这些文件分总共7层进行管理（第0到6层）。第1层到第6层：每层的文件
-
-
+leveldb 存储数据的形式是 sst 文件，为了查找/写入数据的效率，对这些文件分总共7层进行管理（第0到6层）。第1层到第6层：每层的文件按 key 的增序排列，这样就可以在每层文件中以二分法定位出哪个文件包含这个 key。第0层的文件由于是从内存 table 直接写到 sst 中的。所以它们是无序的，这意味着它们之间可能存在键值的重叠。这一个特点影响着键查找，compaction，需要注意到这点。
 
 ##5 leveldb 限制
 ###3.1 第0层文件的限制
