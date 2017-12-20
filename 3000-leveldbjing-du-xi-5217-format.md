@@ -3,18 +3,22 @@
 本文讲述 leveldb 中文件层次（多级 sst + memtalbe），sst 文件格式，log 文件格式，Block 格式，比较器 comparetor。
 
 ##2 leveldb Block 格式
-leveldb 中最细粒度的是 Key，包括 userkey，InternalKey，ParsedInternalKey，详见[“leveldb精读系列-key”][1]，此文介绍了它们各自的定义，以及它们存在的意义。最终存储的形式就是 Key-Value 的形式。为了减少存储空间，使用了 Block，它是 Key-Value 的容器：每个 Block 有多组 Key-Value。
+leveldb 中最细粒度的是 Key，包括 userkey，InternalKey，ParsedInternalKey，详见[“leveldb精读系列-key”][1]，此文介绍了它们各自的定义，以及它们存在的意义。最终存储的形式就是 Key-Value 的形式。为了减少存储空间，使用了 Block：每个 Block 有多组 Key-Value。
 为了提高查询效率和减少存储空间，Block 有如下设计：
-- 1.每个 Block 中还存储着它里面所有 Key 的范围以便于快速决定一个键是否在它里面
-- 2.每个 Block 中的键值对是有序排列的，于是可以利用这点，将相领的 Key 共用的前缀串压缩存储。具体的算法是：每 **block_restart_interval** 个键值对作为一个组，第2个到最后一个 Key-Value 在存储时，只存储各个 Key 与第一个键值对 Key 的相同前缀长度和差异部分。
+- 1.每个 Block 中存储着它里面所有 Key 的范围以便于快速决定一个键是否在它里面
+- 2.每个 Block 中的键值对是有序排列的，于是可以利用这点，将相邻的 Key 共用的前缀串压缩存储。具体的算法是：每 **block_restart_interval** 个键值对作为一个组，***此组中每一个key在存储时，只存储它与前一个 Key 相同前缀的长度和差异部分***。采用分组的方式是为了提高随机解析的效率：解析第 n 个时只需要从它所在的组第一个开始解析，而不是从整个Block 第一个开始。
 
 下图展示的是 block 的格式。
 ![](/assets/leveldb/sst_block.bmp)
 
 ###2.1 Block.entry
-每个 Block 有多个 entry，每个 entry 就是一个 Key-Value：shared_bytes 表示在一组 entry 里面，当前 entry 的 Key 与第一个 entry 的 Key 相同的前缀字节数。unshard\_bytes 即是当前 entry 独有的字节数，value\_bytes 即是当前 entry 的值的长度，unshared\_key\_data 是当前 entry 独有的 key 内容，value_data 即是值内容。从 entry 的定义来看，存储了 key 和 value 的长度及字节序列，它可以存储任意的字节流，哪怕是图片，这一点很棒！
+每个 Block 有多个 entry，每个 entry 就是一个 Key-Value：
+- 1.shared_unshard\_bytes 即是当前 entry 独有的字节数，value\_bytes 即是当前 entry 的值的长度
+- 2.unshared\_key\_data 是当前 entry 独有的 key 内容，value_data 即是值内容
+
+从 entry 的定义来看，存储了 key 和 value 的长度及字节序列，它可以存储任意的字节流，哪怕是图片，这一点很棒！
 ###2.2 Block
-Block 包括多组 entry。各组是一个独立“共用前缀存储”的单元。restarts 是一个数组，存储着各组第一个元素的字节位置。num\_of\_restarts 是 restarts 的元素个数。
+Block 包括多组 entry。各组是一个独立“共用前缀存储”的单元。restarts 是一个数组，存储着各组的开始位置。num\_of\_restarts 是 restarts 的元素个数。
 
 更多的细节见于代码注释。
 
@@ -121,7 +125,7 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
 ##3 leveldb sst 格式
 sstable 是更高层次的存储，它组合了多个 Block，同时维持着它们的索引信息，结构如下图：
 
-![](/assets/leveldb/sst.bmp)
+
 
 sst 中多个 Block 是 Key 有序的。
 meta\_block 对应于一个 data\_block，保存data\_block中的key size/value size/kv counts之类的统计信息，当前版本未实现。
