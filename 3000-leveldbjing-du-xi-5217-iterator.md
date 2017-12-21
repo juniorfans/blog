@@ -28,22 +28,22 @@ virtual Status status()
 这个迭代器用来遍历 Block，Block 的格式见 [3003-leveldb精读系列-format][1]，Block 中的 entry 是按 key 的顺序来排列的，这一点需要时时在心中铭记。
 Block::Iter 迭代器的实现并不是基于在内存中构建 Block 已经解析好的 entry 链表或者数组，而是直接在字节流上建立起来的。维持着当前 Block 的字节流，当前 entry 字节流的偏移位置，重启点(每组起始位置)数组存储的起始位置，重启点个数，当前 entry 所在的组的下标。
 Block::Iter 实现如下：
-Next：
+###Next：
 - 1.通过当前 entry 的最后一个元素 value 的位置及长度，计算并移动到下一个 entry 的起始地址
 - 2.调用 DecodeEntry 解析当前 entry 数据
 - 3.重置迭代器中的位置， key, value, 当前 entry 所在组的下标 restart_index
 
-Prev：
+###Prev：
 - 1.计算前面一个 entry 所在的那个组，原代码中使用了循环，对比每个组的首个 entry 地址与当前 entry 位置比较，找到首个地址小于 entry 位置的最大的组，即是前一个 entry 所在的组。但个人感觉不是必须的，这一点如果有人发现了原因烦请告之(1127365587@qq.com)。
 - 2.使用 SeekToRestartPoint 将迭代器定位到第1步中找到的那个组的首地址
 - 3.在这个组中循环向后找，解析每个 entry 并设置迭代器位置， key, value 等信息，直至遇到当前 entry 即停止。此时最后一个被解析即是前一个 entry。详见代码中的 do while
 
-Seek(const Sliece& target)：
+###Seek(const Sliece& target)：
 - 1.使用二分法找到 target 所在的组: 即小于 target 的最大组
 - 2.使用 SeekToRestartPoint 将迭代器定位到第1步中找到的那个组的首地址
 - 3.从第2步中迭代器的位置循环向后遍历，解析，直到遇到一个 entry 的键值 >= target。***这里判断不仅仅等于，而是大于等于***的原因需要参考 [3004-leveldb精读系列-key][2]，因为 key 的排序规则是 user\_key正序 --> sequenceNumber降序 --> valueType降序，而传入 Seek 函数的 key 会组装一个最新的版本号(大于一切 sstable, memtable, cache 中的版本号)，所以找到的同 user_key 的键一定排在它后面。
 
-SeekToFirst 和 SeekToLast 比较简单，就不再一一阐述。可以看下面的代码注释
+***SeekToFirst*** 和 ***SeekToLast*** 比较简单，就不再一一阐述。可以看下面的代码注释
 
 ```
 class Block::Iter : public Iterator {
@@ -83,7 +83,7 @@ class Block::Iter : public Iterator {
 
   /************************************************************************/
   /* 
-	lzh: 获得第 index 个组的偏移
+	lzh: 获得第 index 个组的偏移，这个值即是 restarts 数组的第 index 个元素的值
   */
   /************************************************************************/
   uint32_t GetRestartPoint(uint32_t index) {
@@ -289,6 +289,125 @@ class Block::Iter : public Iterator {
     }
   }
 };
+```
+##LevelFileNumIterator
+这个迭代器用于遍历某层的 sst 文件。迭代器维持了一个指向文件的下标 index_，通过它的增减表示向前后的遍历。
+index_ 等于文件总个数时表示迭代器失效。
+下面是迭代器主要方法的实现
+###Next
+判断当前迭代器有效性。直接增加 index_
+###Prev
+判断当前迭代器有效性。若当前 index_ 为0则设置为文件个数，表示失效。直接减小 index_
+###Seek(const Slice& target)
+使用 FindFile，通过二分法从文件列表中找出首个 largest >= target 的文件，即说明键 target 在这个文件之中。
+设置 index_ 为此文件下标即是。
+详情见代码注释
+
+```
+class Version::LevelFileNumIterator : public Iterator {
+ public:
+  LevelFileNumIterator(const InternalKeyComparator& icmp,
+                       const std::vector<FileMetaData*>* flist)
+      : icmp_(icmp),
+        flist_(flist),
+        index_(flist->size()) {        // Marks as invalid
+  }
+  virtual bool Valid() const {
+    return index_ < flist_->size();
+  }
+
+  /************************************************************************/
+  /* 
+	lzh:
+	返回首个 largest 比 target 的文件.
+	若 target < flist_[0].smallest 则返回 0，该情况下表示 target 可能在 flist_[0] 中或者不在
+	若 target > flist_[flist_->size()-1] 则返回 flist_->size()，无效的位置
+  */
+  /************************************************************************/
+  virtual void Seek(const Slice& target) {
+    index_ = FindFile(icmp_, *flist_, target);
+  }
+  virtual void SeekToFirst() { index_ = 0; }
+  virtual void SeekToLast() {
+    index_ = flist_->empty() ? 0 : flist_->size() - 1;
+  }
+  virtual void Next() {
+    assert(Valid());
+    index_++;
+  }
+  virtual void Prev() {
+    assert(Valid());
+    if (index_ == 0) {
+      index_ = flist_->size();  // Marks as invalid
+    } else {
+      index_--;
+    }
+  }
+
+  /************************************************************************/
+  /* 
+	lzh: 返回当前位置文件的 largest
+  */
+  /************************************************************************/
+  Slice key() const {
+    assert(Valid());
+    return (*flist_)[index_]->largest.Encode();
+  }
+
+  /************************************************************************/
+  /* 
+	lzh: 返回当前位置文件的 number, size 的固长编码
+  */
+  /************************************************************************/
+  Slice value() const {
+    assert(Valid());
+    EncodeFixed64(value_buf_, (*flist_)[index_]->number);
+    EncodeFixed64(value_buf_+8, (*flist_)[index_]->file_size);
+    return Slice(value_buf_, sizeof(value_buf_));
+  }
+  virtual Status status() const { return Status::OK(); }
+ private:
+  const InternalKeyComparator icmp_;
+  const std::vector<FileMetaData*>* const flist_;
+  uint32_t index_;
+
+  // Backing store for value().  Holds the file number and size.
+  mutable char value_buf_[16];
+};
+```
+***FindFile*** 是一个二分法查找算法，如下：
+
+```
+/************************************************************************/
+/************************************************************************/
+/* 
+	lzh: 使用二分法找出 files(正序排列) 中首个 largest >= key 的 file
+	注意边界条件
+		1.若 files[0].smallest > key 则返回 0
+		2.若 files[files.size()-1].largest < key 则返回 files.size()
+	调用者若想调用此函数返回 key 所在的文件，则需要注意第 1 种情况可能是个反例
+*/
+/************************************************************************/
+int FindFile(const InternalKeyComparator& icmp,
+             const std::vector<FileMetaData*>& files,
+             const Slice& key) {
+  uint32_t left = 0;
+  uint32_t right = files.size();
+  while (left < right) {
+    uint32_t mid = (left + right) / 2;
+    const FileMetaData* f = files[mid];
+    if (icmp.InternalKeyComparator::Compare(f->largest.Encode(), key) < 0) {
+      // Key at "mid.largest" is < "target".  Therefore all
+      // files at or before "mid" are uninteresting.
+      left = mid + 1;
+    } else {
+      // Key at "mid.largest" is >= "target".  Therefore all files
+      // after "mid" are uninteresting.
+      right = mid;
+    }
+  }
+  return right;
+}
 ```
 
 
