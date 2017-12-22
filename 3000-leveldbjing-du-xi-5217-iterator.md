@@ -505,7 +505,7 @@ MergingIterator 有如下设计：
 注意 Prev 与 Next 不同的地方在于，当它们都处于反方向遍历时，且都 seek 到了 current\_.key() 的位置，Next 中还需要判断各迭代器当前位置键
 是否等于 current\_.key()，这是为了保证 MergingIterator 设计的第3条。所有迭代器的 seek(target) 的逻辑是，找到键值大于等于 target 的位置。若已经大于 current\_.key() 了则不需要对分迭代顺再调用 next 以满足第3条。
 
-如下图x, y, z 表示 MergingIterator 的三个分迭代器，这三个迭代器各三个键(InternalKey)，三个分迭代器的键对应相等：它们的 user\_key 都一样，版本号分别为19，18，17，注意 InternalKey 的排序规则，版本号较的排在前面(Prev 方向)。红色三角符号表示 current\_ 指向的那个迭代器的当前位置。红色的线条把各个分迭代器的当前位置串联起来了。图演示了迭代器 Next 和 Prev 被调用时的状态变化。
+如下图x, y, z 表示 MergingIterator 的三个分迭代器，这三个迭代器各三个键(InternalKey)，三个分迭代器的键对应相等：它们的 user\_key 都一样，版本号分别为19，18，17，注意 InternalKey 的排序规则，版本号较大的排在前面(Prev 方向)。红色三角符号表示 current\_ 指向的那个迭代器的当前位置。红色的线条把各个分迭代器的当前位置串联起来了。图演示了迭代器 Next 和 Prev 被调用时的状态变化。
 ![](/assets/leveldb/mergerIterator_1.JPG)
 
 ![](/assets/leveldb/mergerIterator_2.JPG)
