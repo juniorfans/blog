@@ -1,6 +1,6 @@
 #leveldb 的 Iterator
 ##概述
-本文主要讲述 leveldb 的 Iterator, 包括 Block::Iter，LevelFileNumIterator，IteratorWrapper，MergingIterator，DBIter，TwoLevelIterator。
+本文主要讲述 leveldb 的 Iterator, 包括 Block::Iter，LevelFileNumIterator，IteratorWrapper，MergingIterator，TwoLevelIterator，DBIter。
 给出一些场景及 Iterator：
 - leveldb 是数据库，我们需要提供查询能力及遍历能力，这需要 DBIter
 - 将内存中的 Table 写入数据库时要遍历 Table，这需要 TwoLevelIterator
