@@ -9,6 +9,7 @@
 * [2000-使用 IDA 破解程序自校验](2000shi-yong-ida-po-jie-cheng-xu-zi-xiao-yan.md)
 * [2001-HTTP/HTTPS 代理与破解](2000-httphttps-dai-li-yu-you-xi-po-jie.md)
 * [3000-leveldb精读系列-Iterator](3000-leveldbjing-du-xi-5217-iterator.md)
+* [3000-leveldb精读系列-Db::Iter](3000-leveldbjing-du-xi5217-db-iter.md)
 * [3000-leveldb精读系列-LevelFileNumIterator](3000-leveldbjing-du-xi-5217-levelfilenumiterator.md)
 * [3000-leveldb精读系列-MergingIterator](3000-leveldbjing-du-xi5217-mergingiterator.md)
 * [3000-leveldb精读系列-IteratorWrapper](3000-leveldbjing-du-xi-5217-iteratorwrapper.md)
