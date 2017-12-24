@@ -9,7 +9,8 @@ leveldb 的 Iterator, 涉及 Block::Iter，LevelFileNumIterator，IteratorWrappe
 
 
 预计包含的内容：如何遍历一个 Block，如何遍历一个 Table，考虑在有缓存，快照的情况下，遍历整个数据库。
-##1 Iterator
+
+##接口
 leveldb::Iterator 是一个抽象类，和一般的迭代器没有太大的不同，同样是提供了以下接口
 
 ```
