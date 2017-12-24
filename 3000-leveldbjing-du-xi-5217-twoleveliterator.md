@@ -33,9 +33,10 @@ seek 的实现分三步
 	第一维的 index_iter 即是 sst 文件格式中的 index_block，表示这个 sst 文件的索引，是键值与 sst 中位置信息的映射. InternalKey --> (offset, size)
 	第二维的 data_iter 是 Block 上的迭代器，用于返回元素的 key-value.
 
-更多的细节见代码注释。
+更多的细节见 two_level_iterator.cc 和部分 version_set.cc 代码注释。
 
 ```
+//two_level_iterator.cc
 namespace {
 
 typedef Iterator* (*BlockFunction)(void*, const ReadOptions&, const Slice&);
@@ -234,5 +235,42 @@ Iterator* NewTwoLevelIterator(
     void* arg,
     const ReadOptions& options) {
   return new TwoLevelIterator(index_iter, block_function, arg, options);
+}
+```
+
+第一种场景下的二维迭代器使用见 version_set.cc 如下代码：
+
+```
+/************************************************************************/
+/* 
+	lzh: 生成访问第 level 层的文件的迭代器.	它是一个二维的迭代器；
+	第(1)维的 LevelFileNumIterator 迭代器是第 level 层文件列表的迭代器, 返回的单个文件{(file number, file size)}
+	第(2)维的 TableCache 的 Iterator 是 TableCache 上的迭代器, 用于访问数据
+*/
+/************************************************************************/
+Iterator* Version::NewConcatenatingIterator(const ReadOptions& options,
+                                            int level) const {
+  return NewTwoLevelIterator(
+      new LevelFileNumIterator(vset_->icmp_, &files_[level]),
+      &GetFileIterator, vset_->table_cache_, options);
+}
+```
+
+第二种场景下的二维迭代器使用见 table.cc 如下代码：
+
+```
+/************************************************************************/
+/* 
+	lzh: 返回一个遍历此 Table 的迭代器.
+	第一维的迭代器是 index_block 的迭代器，用于返回元素在 table 中的位置信息.
+	第二维的迭代器是 table 上的迭代器，用于返回元素的 key-value.
+*/
+/************************************************************************/
+Iterator* Table::NewIterator(const ReadOptions& options) const {
+  return NewTwoLevelIterator(
+      rep_->index_block->NewIterator(rep_->options.comparator),	//lzh: table 的 index_block
+      &Table::BlockReader, 
+	  const_cast<Table*>(this), 
+	  options);
 }
 ```
