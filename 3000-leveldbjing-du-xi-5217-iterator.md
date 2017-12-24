@@ -3,10 +3,12 @@
 leveldb 的 Iterator, 涉及 Block::Iter，LevelFileNumIterator，IteratorWrapper，MergingIterator，TwoLevelIterator，DBIter。我们以一组文章的形式依次讲解。
 
 先给出一些场景及 Iterator：
-- leveldb 是数据库，我们需要提供查询能力及遍历能力，这需要 DBIter
-- 将内存中的 Table 写入数据库时要遍历 Table，这需要 TwoLevelIterator
-- 
-
+- leveldb 是数据库，我们需要提供查询能力及遍历能力，这需要 DBIter。
+- Block 是 leveldb 中低层次数据源，考虑到磁盘存储和索引，我们需要 Block::Iter 遍历。
+- 将内存中的 Table 写入数据库时要遍历 Table，Table 是一个较高层次的数据结构，处于较低层次提供数据服务的是 Block。TAble 包含了键到Block的映射索引，而 Block 内部也有索引：这是一个多级索引结构，我们需要 TwoLevelIterator 遍历。
+- 整个 leveldb 迭代器体系，均是以 Iterator 为基类，实现它们的虚函数。为了提高效率，使用IteratorWrapper  去减少虚函数调用次数。
+- 一个 Table 有多个 Block，为了遍历的方便，我们需要一个抽象的迭代器，而不是管理一堆具体的迭代器，因此使用 MergingIterator 去抽象迭代器。
+等等。
 
 预计包含的内容：如何遍历一个 Block，如何遍历一个 Table，考虑在有缓存，快照的情况下，遍历整个数据库。
 
