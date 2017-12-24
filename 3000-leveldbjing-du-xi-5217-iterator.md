@@ -29,5 +29,3 @@ virtual Status status()
 
 
 
-[1]: 3003-leveldb精读系列-format
-[2]: 3003-leveldb精读系列-key
