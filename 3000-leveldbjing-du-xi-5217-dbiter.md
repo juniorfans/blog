@@ -1,7 +1,7 @@
 #DBIter
 这是一个遍历整个 DB 的迭代器。实际上它内部聚合了一个 MergingIterator iter_，用以包含 Memtable, IMemtable, sstable 的迭代器。
 DBIter 是顶级的迭代器，它需要对底层迭代器的结果，状态进行一定的包装。
-
+ 
 DBIter 有一个特性如下：
 执行完 Prev 后迭代器的saved_key 即是迭代器当前的 user_key，而指针指示的位置是当前 saved_key 节点的上一个节点(Prev 方向)。
 这一点不同于 Next，Next 的指针所指位置的 user_key 即是迭代器当前的 user_key。
