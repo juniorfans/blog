@@ -135,7 +135,7 @@ void DBIter::FindNextUserEntry(bool skipping, std::string* skip) {
       }
     }
     iter_->Next();	//lzh: 执行跳过
-  } while (iter_->Valid());
+  } while (iter_->Valid());45                                                                                                                          
   saved_key_.clear();
   valid_ = false;
 }
