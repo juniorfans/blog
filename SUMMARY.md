@@ -14,7 +14,7 @@
 * [3000-leveldb精读系列-IteratorWrapper](3000-leveldbjing-du-xi-5217-iteratorwrapper.md)
 * [3000-leveldb精读系列-MergingIterator](3000-leveldbjing-du-xi5217-mergingiterator.md)
 * [3000-leveldb精读系列-TwoLevelIterator](3000-leveldbjing-du-xi-5217-twoleveliterator.md)
-* [3000-leveldb精读系列-DBIter](3000-leveldbjing-du-xi-5217-dbiter.md)
+* [3000-leveldb精读系列-DbIterator](3000-leveldbjing-du-xi-5217-dbiter.md)
 * [3001-leveldb精读系列-Compaction](3000-leveldbjing-du-xi-5217-compaction.md)
 * [3002-leveldb精读系列-skiplist](3000-leveldbjing-du-xi-5217-skiplist.md)
 * [3003-leveldb精读系列-format](3000-leveldbjing-du-xi-5217-format.md)
