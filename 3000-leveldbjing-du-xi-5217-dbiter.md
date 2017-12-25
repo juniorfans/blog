@@ -1,9 +1,8 @@
 #DBIter
 这是一个遍历整个 DB 的迭代器。实际上它内部聚合了一个 MergingIterator iter_，用以包含 Memtable, IMemtable, sstable 的迭代器。
 DBIter 是顶级的迭代器，它需要对底层迭代器的结果，状态进行一定的包装。
-下面一个一个看过它们的实现.
 
-DBIter 有一个设计需要注意：
+DBIter 有一个特性如下：
 执行完 Prev 后迭代器的saved_key 即是迭代器当前的 user_key，而指针指示的位置是当前 saved_key 节点的上一个节点(Prev 方向)。
 这一点不同于 Next，Next 的指针所指位置的 user_key 即是迭代器当前的 user_key。
 造成这个不同的关键原因是:
@@ -13,211 +12,29 @@ Internalkey 排序规则是 Internal key 的排序规则: user_key 正序比较 
 
 ##Next
 Next 函数的需求是要定位到下一个有效元素位置。这个接口稍复杂。分两种情况：
-- 1.若当前遍历方向是 kReverse，设 saved_key_ 对应的用户键是 user_key, 则当前迭代器位置指在了最左边(Prev 方向)的那个 user_key 的左边一个位置(Prev 函数的注释中有详细说明)。显然 Next 要定位到后面紧接着的有效元素的位置，即首先需要调用 iter_->Next() 使得
-迭代器的位置与当前 user_key 匹配上。
-- 2.若当前遍历方向是 kForword，无需额外处理。
-之后统一调用 FindNextUserEntry 去跳过当前 user_key 。
-
-##Prev
-与 Next 相对, 功能是找到仅仅比当前 user_key 小的有效的 user_key` 节点，但所不同的是，Prev 需要完全遍历完等于 user_key 的所有节点，
-才能知道 user_key 节点是不是有效的。
-- 1.若当前遍历方向是 kForword，需要对迭代器循环调用 Prev 以遍历直到遇到不同的 user_key 则停止
-- 2.若当前遍历方向是 kReverse，无需额外处理。
-之后统一调用 FindPrevUserEntry，若新的 user_key 的最新版本是 deletion 的则该 user_key 已失效，需要继续 Prev 以找到有效的 user_key
-
-##Seek(const Slice& target)
-这是一个定位函数，不用考虑上一次的遍历方向是 Next 还是 Prev，我们只需要对迭代器定位到 target 位置即可。当然，我们需要防止定位到了
-deletion 位置。
-SeekToFirst 和 SeekToLast 皆与此类似，不再缀述。
-
-##FindNextUserEntry(bool skipping, std::string* skip)
-需要重点介绍这个函数，它有些复杂。
-该函数耦合了两个功能: 
-1. 遍历过程中遇到了某个 user_key 的类型是 delete, 则后面跳过此 user_key, 
-	若跳过后又遇到其它 user_key 的最新记录(也即此 user_key 最先遍历到的版本)是 deletion, 则继续重复处理. -- (skipping 为 true|false 都有此功能)
-2. 跳过相同 user_key 的旧版本 -- skipping 为 true 时有此功能
-skipping 为 true 指示了是否需要向后跳过 skip 指示的 user_key 及已被 delete 的节点。 为 false 指示了只向后跳过已被 delete 的节点.
-
-在 Next 与 Prev 中调用此函数时都设置 skipping=true，Seek 和 SeekToFirst 设置为 false，这是因为：
-考虑 Seek 和 SeekToFirst 的功能, 我们需要定位到的位置: 
-当它是 deletion, 表明当前 user_key 最新的记录是被删除了, 所以应该继续往后面 seek(即 skip); 
-当它是 valueType 时, 即使它是一个旧版本的值, 也不应该跳过, 因为有可能调用者就是想定位到旧版本.
+- 1.若当前遍历方向是 kForword，即上一次遍历的方向也是 Next，现在需要定位到下一个有效位置，设当前 user_key 为 saved_key 且
+	skip=saved_key，我们需要往后遍历，跳过 user_key 等于 skip 的旧版本。
+	对迭代器执行 Next，对当前位置 current 有如下判断：
+	a).若 valueType 是 deletion，则重新设置 skip=current.user_key，表示向后跳过所有 user_key 等于 skip 的已失效节点，继续 Next。
+	
+		注意两点:
+		1: skip 被重新设置后一定大于之前的值，因为 Next 遍历到的 user_key 会越来越大。而过程 a) 是递归的：若后面有多个 user_key 的最新版本都是 deletion 则本过程会递归的执行。
+		2: skip 被初次设置时表示要跳过 user_key 等于 skip 的旧版本。之后在循环中被设置时表示因为 user_key=skip 的最新版本是 deletion所
+		以要跳过后面所有 user_key=skip 的节点。
+	b).若 valueType 是 value，若 current.user_key <= skip 则继续调用 Next 以跳过当前节点(不论原因是需要跳过旧版本，还是失效节点)。反之则
+		结束遍历，终态为：current 已跳过所有 saved_key 的旧版本，以及后面遍历时遇到的其它 user_key 的所有失效节点。当前的 saved_key 为 current.user_key。
 		
-考虑 Next 的功能, 我们需要定位到当前版本 user_key 的下一个有效可访问位置. 若下个位置是 deletion 显然也应该跳过, 
-若是 valueType, 且 user_key 与上一个一致, 但版本较旧, 为了得到 “下一个有效可访问位置”, 我们也需要跳过.
-
-##FindPrevUserEntry
-该函数无参，与上一个不同。根本上来讲，此函数的逻辑较简单，那就是跳过无效的 user_key：我们只需要往前遍历，直到遍历到另外一个 user_key`，然后再回头看 user_key 最后一次被遍历到的节点是不是 deletion 节点。所以该函数不需要参数，直接按此逻辑便是。
-
-##如何遍历整个 levelDB
-db_impl.cc 中生成整个数据库遍历的 Iterator 实现代码如下，比较易懂。不再缀述。
+- 2.若当前遍历方向是 kReverse，设 saved_key_ 对应的用户键是 user_key, 但当前迭代器位置指在了最左边(Prev 方向)的那个 user_key 的左边一个位置(Prev 函数的注释中有详细说明)。显然 Next 要定位到后面紧接着的有效元素的位置，我们首先需要调用 iter_->Next() 使得
+迭代器的位置与当前 user_key 匹配上。之后的处理就与 1 一致了。
+我们把之后的处理封装在 FindNextUserEntry 函数中.
 
 ```
-Iterator* DBImpl::NewInternalIterator(const ReadOptions& options,
-                                      SequenceNumber* latest_snapshot) {
-  IterState* cleanup = new IterState;
-  mutex_.Lock();
-  *latest_snapshot = versions_->LastSequence();
-
-  // Collect together all needed child iterators
-  std::vector<Iterator*> list;
-  list.push_back(mem_->NewIterator());
-  mem_->Ref();
-  if (imm_ != NULL) {
-    list.push_back(imm_->NewIterator());
-    imm_->Ref();
-  }
-  versions_->current()->AddIterators(options, &list);
-  Iterator* internal_iter =
-      NewMergingIterator(&internal_comparator_, &list[0], list.size());
-  versions_->current()->Ref();
-
-  cleanup->mu = &mutex_;
-  cleanup->mem = mem_;
-  cleanup->imm = imm_;
-  cleanup->version = versions_->current();
-  internal_iter->RegisterCleanup(CleanupIteratorState, cleanup, NULL);
-
-  mutex_.Unlock();
-  return internal_iter;
-}
-
-.........
-
-Iterator* DBImpl::NewIterator(const ReadOptions& options) {
-  SequenceNumber latest_snapshot;
-  Iterator* internal_iter = NewInternalIterator(options, &latest_snapshot);
-  return NewDBIterator(
-      &dbname_, env_, user_comparator(), internal_iter,
-      (options.snapshot != NULL
-       ? reinterpret_cast<const SnapshotImpl*>(options.snapshot)->number_
-       : latest_snapshot));
-}
-```
-
-##代码注释
-
-```
-class DBIter: public Iterator {
- public:
-  // Which direction is the iterator currently moving?
-  // (1) When moving forward, the internal iterator is positioned at
-  //     the exact entry that yields this->key(), this->value()
-  // (2) When moving backwards, the internal iterator is positioned
-  //     just before all entries whose user key == this->key().
-
-	 /************************************************************************/
-	 /* 
-	 执行完 Prev 后迭代器的saved_key 即是迭代器当前的 user_key，而指针指示的位置是当前 saved_key 节点的上一个节点(Prev 方向)。
-	 这一点不同于 Next，Next 的指针所指位置的 user_key 即是迭代器当前的 user_key。
-	 造成这个不同的关键原因是:
-	 Internalkey 排序规则是 Internal key 的排序规则: user_key 正序比较 --> sequence number 逆序 --> type 的逆序
-	 那么相同 user_key 的更新的版本会排在前面(Prev 方向), 所以要找到当前 user_key 的前面一个有效 user_key`, 必须要
-	 遍历把 user_key` 的所有节点都遍历完, 才会得知这个 user_key` 是否没有被删除, 或是否有更新版本的值. 
-	 */
-	 /************************************************************************/
-
-  enum Direction {
-    kForward,
-    kReverse
-  };
-
-  DBIter(const std::string* dbname, Env* env,
-         const Comparator* cmp, Iterator* iter, SequenceNumber s)
-      : dbname_(dbname),
-        env_(env),
-        user_comparator_(cmp),
-        iter_(iter),
-        sequence_(s),
-        direction_(kForward),
-        valid_(false) {
-  }
-  virtual ~DBIter() {
-    delete iter_;
-  }
-  virtual bool Valid() const { return valid_; }
-  virtual Slice key() const {
-    assert(valid_);
-    return (direction_ == kForward) ? ExtractUserKey(iter_->key()) : saved_key_;
-  }
-  virtual Slice value() const {
-    assert(valid_);
-    return (direction_ == kForward) ? iter_->value() : saved_value_;
-  }
-  virtual Status status() const {
-    if (status_.ok()) {
-      return iter_->status();
-    } else {
-      return status_;
-    }
-  }
-
-  //lzh: [增加代码]
-  Slice internal_key() const {
-	  assert(valid_);
-	  return (direction_ == kForward) ? iter_->key() : saved_key_;
-  }
-
-  virtual void Next();
-  virtual void Prev();
-  virtual void Seek(const Slice& target);
-  virtual void SeekToFirst();
-  virtual void SeekToLast();
-
- private:
-  void FindNextUserEntry(bool skipping, std::string* skip);
-  void FindPrevUserEntry();
-  bool ParseKey(ParsedInternalKey* key);
-
-  inline void SaveKey(const Slice& k, std::string* dst) {
-    dst->assign(k.data(), k.size());
-  }
-
-  inline void ClearSavedValue() {
-    if (saved_value_.capacity() > 1048576) {
-      std::string empty;
-      swap(empty, saved_value_);
-    } else {
-      saved_value_.clear();
-    }
-  }
-
-  const std::string* const dbname_;
-  Env* const env_;
-  const Comparator* const user_comparator_;
-  Iterator* const iter_;
-  SequenceNumber const sequence_;
-
-  Status status_;
-
-  //lzh: 当前遍历方向是 kReverse 时, 即是当前的 key
-  std::string saved_key_;     // == current key when direction_==kReverse
-
-  //lzh: 当前遍历方向是 kReverse 时, 即是当前的值(最原始的 value)
-  std::string saved_value_;   // == current raw value when direction_==kReverse
-  Direction direction_;
-  bool valid_;
-
-  // No copying allowed
-  DBIter(const DBIter&);
-  void operator=(const DBIter&);
-};
-
-inline bool DBIter::ParseKey(ParsedInternalKey* ikey) {
-  if (!ParseInternalKey(iter_->key(), ikey)) {
-    status_ = Status::Corruption("corrupted internal key in DBIter");
-    return false;
-  } else {
-    return true;
-  }
-}
-
 /************************************************************************/
 /* 
 	lzh:
 	Next 函数的需求是要定位到下一个有效元素位置。
 	若当前遍历方向是 kReverse ，设 saved_key_ 对应的用户键是 user_key, 则当前迭代器位置指在了最左边(Prev 方向)
-	的那个 user_key 的左边一个位置(Prev 函数的注释中有详细说明).
+	的那个 user_key 的左边一个位置(此位置有可能是 deletion, 这会在下一次遍历中处理)(Prev 函数的注释中有详细说明).
 	显然 Next 要定位到后面紧接着的有效元素的位置，这就需要跳过 user_key 更旧的版本或失效的版本。
 	这在 FindNextUserEntry 会处理.
 */
@@ -252,19 +69,40 @@ void DBIter::Next() {
   FindNextUserEntry(true, skip);
 }
 
+```
 
+##FindNextUserEntry(bool skipping, std::string* skip)
+在 Next 中第 1 个分支已经把这个函数的逻辑讲的差不多了。
+该函数耦合了两个功能: 
+1. 遍历过程中遇到了某个 user_key 的最新版本是 deletion, 则后面跳过此 user_key 的所有节点。此过程是递归的，即若存在连续这样的 user_key 则全部会被跳过。 -- (skipping 为 true|false 都有此功能)
+2. 跳过 user_key 等于函数参数指定的 skip 的旧版本 -- skipping 为 true 时有此功能
+
+总的来说，skipping 为 true 指示了是否需要向后跳过 skip 指示的 user_key 及已被 delete 的节点。 为 false 指示了只向后跳过最新版本为 delete 的节点直到遇到有效的节点。
+
+在 Next 与 Prev 中调用此函数时都设置 skipping=true，Seek 和 SeekToFirst 设置为 false，这是因为：
+考虑 Seek 和 SeekToFirst 的功能, 我们需要定位到的位置: 
+当它是 deletion, 表明当前 user_key 最新的记录是被删除了, 所以应该继续往后面 seek(即 skip); 
+当它是 valueType 时, 即使它是一个旧版本的值, 也不应该跳过, 因为有可能调用者就是想定位到旧版本.
+		
+考虑 Next 的功能, 我们需要定位到当前版本 user_key 的下一个有效可访问位置. 若下个位置是 deletion 显然也应该跳过, 
+若是 valueType, 且 user_key 与上一个一致, 但版本较旧, 为了得到 “下一个有效可访问位置”, 我们也需要跳过.
+
+其代码如下：
+
+```
 /************************************************************************/
 /* 
-	lzh: 该函数耦合了两个功能: 
-		1. 遍历过程中遇到了某个 user_key 的类型是 delete, 则后面跳过此 user_key, 
-			若跳过后又遇到其它 user_key 的最新记录(也即此 user_key 最先遍历到的版本)是 deletion, 则继续重复处理. -- (skipping 为 true|false 都有此功能)
-		2. 跳过相同 user_key 的旧版本 -- skipping 为 true 时有此功能
-	
-	skipping 为 true 指示了是否需要向后跳过 skip 指示的 user_key 及已被 delete 的节点。 为 false 指示了只向后跳过已被 delete 的节点.
+lzh: 该函数耦合了两个功能: 
+	1. 遍历过程中遇到了某个 user_key 的最新版本是 deletion, 则后面跳过此 user_key 的所有节点。此过程是递归的，即若存在连续这样的 user_key 则全部会被跳过。 -- (skipping 为 true|false 都有此功能)
+	2. 跳过 user_key 等于函数参数指定的 skip 的旧版本 -- skipping 为 true 时有此功能
+
+	总的来说，skipping 为 true 指示了是否需要向后跳过 skip 指示的 user_key 及已被 delete 的节点。 为 false 指示了只向后跳过最新版本为 delete 的节点直到遇到有效的节点。
 
 	Internal key 的排序规则: user_key 正序比较 --> sequence number 逆序 --> type 的逆序所以同 user_key 较新的记录在前面被遍历出, 如果先遇到了一个 deleteType 的 InternalKey, 则后面同 user_key 的InternalKey 要被删除.
 	
-	传入的参数 skip 可能是 Internalkey, 但此时 skipping 是 false(见本文件中 Seek 函数中的调用).个人相信这是原作者的笔误.
+	传入的参数 skip 可能是 Internalkey, 但此时 skipping 是 false，不影响逻辑(见本文件中 Seek 函数中的调用).个人相信这是原作者的笔误.
+
+	最后注意，如果我们设置 skipping 为 true 且指定 skip 是一个很大的 user_key，则由于两个功能会同时生效，若存在某个 user_key 的最新版本是 deletion 则 skip 会被覆盖
 */
 /************************************************************************/
 void DBIter::FindNextUserEntry(bool skipping, std::string* skip) {
@@ -286,8 +124,7 @@ void DBIter::FindNextUserEntry(bool skipping, std::string* skip) {
         case kTypeValue:
           if (skipping &&
               user_comparator_->Compare(ikey.user_key, *skip) <= 0) {
-				  //lzh: 传入的 skip 有可能大于 ikey.user（调用者执行 Seek 定位到了 skip 后面的 user_key）. 所以要判断 <
-				  //lzh: = 是边界条件
+				  //lzh: 此处的判断是 <= ，而不仅仅是 =，参考 Seek(const Slice& target) 函数中的注释
           } else {
 			  //lzh: 如果 skipping=false 或遍历到的 user_key 大于 skip, 表示已经找到了 NextUserEntry ，直接返回
             valid_ = true;
@@ -303,7 +140,16 @@ void DBIter::FindNextUserEntry(bool skipping, std::string* skip) {
   valid_ = false;
 }
 
+```
 
+##Prev
+与 Next 相对, 功能是找到仅仅比当前 user_key 小的有效的 user_key` 节点，但所不同的是，Prev 需要完全遍历完等于 user_key 的所有节点，
+才能知道 user_key 节点是不是有效的。
+- 1.若当前遍历方向是 kForword，需要对迭代器循环调用 Prev 以遍历直到遇到不同的 user_key 则停止
+- 2.若当前遍历方向是 kReverse，无需额外处理。
+之后统一调用 FindPrevUserEntry：若新的 user_key 的最新版本是 deletion 的则该 user_key 已失效，需要继续 Prev 以找到有效的 user_key
+
+```
 /************************************************************************/
 /* 
 	lzh: 与 Next 相对, 功能是找到仅仅比当前 user_key 小的有效的 user_key` 节点
@@ -346,7 +192,12 @@ void DBIter::Prev() {
   //lzh; 失效的节点
   FindPrevUserEntry();
 }
+```
 
+##FindPrevUserEntry
+该函数无参，与上一个不同。根本上来讲，此函数的逻辑较简单，那就是跳过无效的 user_key：我们只需要往前遍历，直到遍历到另外一个 user_key`，然后再回头看 user_key 最后一次被遍历到的节点是不是 deletion 节点。所以该函数不需要参数，直接按此逻辑便是。
+
+```
 /************************************************************************/
 /* 
 	lzh: 本函数耦合两个功能:
@@ -412,7 +263,8 @@ void DBIter::FindPrevUserEntry() {
     } while (iter_->Valid());
   }
 
-  //lzh: 向前（Prev 方向）遍历到第一个元素，而它又是一个 deletion
+  //lzh: 注意上面的 break 时，value_type!=kTypeDeletion，此时 value_type 并未被重新赋值
+  //lzh: 所以此分支表示整个迭代器遍历完了，但是首个节点的 value_type 是 kTypeDeletion，所以置迭代器状态为 invalid
   if (value_type == kTypeDeletion) {
     // End
     valid_ = false;
@@ -423,7 +275,14 @@ void DBIter::FindPrevUserEntry() {
     valid_ = true;
   }
 }
+```
 
+##Seek(const Slice& target)
+这是一个定位函数，不用考虑上一次的遍历方向是 Next 还是 Prev，我们只需要对迭代器定位到 target 位置即可。当然，我们需要防止定位到了
+deletion 位置。
+SeekToFirst 与此类似，不再缀述。
+
+```
 /************************************************************************/
 /* 
 	lzh: Seek 调用 FindNextUserEntry 传入 skipping=false, 这点和 SeekToFirst一样, 
@@ -444,11 +303,13 @@ void DBIter::Seek(const Slice& target) {
   AppendInternalKey(
       &saved_key_, ParsedInternalKey(target, sequence_, kValueTypeForSeek));
   iter_->Seek(saved_key_);
+
+  //lzh: 执行 iter_->Seek(saved_key_) 后，有可能 iter_ 指向的是一个 user_key 大于 target 的位置(即 target 不存在)，
+  //lzh: 此时 iter_.user_key > saved_key.user_kty，FindNextUserEntry 中的判断 <= 就有意义了，而不仅仅是 ==
+
   if (iter_->Valid()) {
 
-	//lzh: 此时传入的 saved_key_ 是 Internalkey, 仅此一处。个人认为可能是笔误。
-	//lzh: 但调用完 FindNextUserEntry 函数后, saved_key 被清空
-	//lzh: 有可能执行 iter_->Seek(saved_key_) 后，iter_ 指向的是一个 user_key 大于 target 的位置(即 target 不存在)
+	//lzh: 此时传入的 saved_key_ 是 Internalkey, 仅此一处。个人认为可能是笔误。但调用完 FindNextUserEntry 函数后, saved_key 被清空
     FindNextUserEntry(false, &saved_key_ /* temporary storage */);
   } else {
     valid_ = false;
@@ -465,8 +326,12 @@ void DBIter::SeekToFirst() {
   } else {
     valid_ = false;
   }
-}
+```
 
+##SeekToLast
+与 SeekToFirst 不同，此函数带有“Prev”属性，所以迭代器所指的位置应是当前值的左边(Prev 方向)的节点。同时为了保证当前值不是 deletion，  需要在执行 seek 之后调用 FindPrevUserEntry 以让指针再向前指到 saved_key 的左边一个位置。
+
+```
 void DBIter::SeekToLast() {
   direction_ = kReverse;
   ClearSavedValue();
@@ -477,6 +342,52 @@ void DBIter::SeekToLast() {
 
   FindPrevUserEntry();
 }
+```
 
+
+##如何遍历整个 levelDB
+db_impl.cc 中生成整个数据库遍历的 Iterator 实现代码如下，比较易懂。不再缀述。
+
+```
+Iterator* DBImpl::NewInternalIterator(const ReadOptions& options,
+                                      SequenceNumber* latest_snapshot) {
+  IterState* cleanup = new IterState;
+  mutex_.Lock();
+  *latest_snapshot = versions_->LastSequence();
+
+  // Collect together all needed child iterators
+  std::vector<Iterator*> list;
+  list.push_back(mem_->NewIterator());
+  mem_->Ref();
+  if (imm_ != NULL) {
+    list.push_back(imm_->NewIterator());
+    imm_->Ref();
+  }
+  versions_->current()->AddIterators(options, &list);
+  Iterator* internal_iter =
+      NewMergingIterator(&internal_comparator_, &list[0], list.size());
+  versions_->current()->Ref();
+
+  cleanup->mu = &mutex_;
+  cleanup->mem = mem_;
+  cleanup->imm = imm_;
+  cleanup->version = versions_->current();
+  internal_iter->RegisterCleanup(CleanupIteratorState, cleanup, NULL);
+
+  mutex_.Unlock();
+  return internal_iter;
+}
+
+.........
+
+Iterator* DBImpl::NewIterator(const ReadOptions& options) {
+  SequenceNumber latest_snapshot;
+  Iterator* internal_iter = NewInternalIterator(options, &latest_snapshot);
+  return NewDBIterator(
+      &dbname_, env_, user_comparator(), internal_iter,
+      (options.snapshot != NULL
+       ? reinterpret_cast<const SnapshotImpl*>(options.snapshot)->number_
+       : latest_snapshot));
 }
 ```
+
