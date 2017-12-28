@@ -152,8 +152,8 @@ compaction 中有一种场景可以优化，使 compact 的速度大大提高：
 	Get 时可以通过option传入snapshot参数，那么查找时会跳过SequenceNumber比snapshot大的键值对，定位到小于等于 snapshot 的最新版本，从而完成快照功能：读取历史数据。
 	
 	对应地，compaction 应该有如下两个逻辑：
-		1.为每个 user\_key 保留一个小于等于 snapshot 的最大版本号(如果有的话)。
-		2.最基本的，各个 user\_key 要保留其最新的版本，不论这个版本是不是小于 snapshot。
+		1.为每个 user_key 保留一个小于等于 snapshot 的最大版本号(如果有的话)。
+		2.最基本的，各个 user_key 要保留其最新的版本，不论这个版本是不是小于 snapshot。
 	
 	由1，2两点，当 snapshot 没有被设置时，snapshot 应该被默认为整个 leveldb 中当前最大版本号。此时第1点等于无（此时它即是第2点）。
 	另外，一个解析出错的键值对后面紧挨着的键值对不会被 drop。
@@ -161,60 +161,60 @@ compaction 中有一种场景可以优化，使 compact 的速度大大提高：
 */
 /************************************************************************/
 Status DBImpl::DoCompactionWork(CompactionState* compact) {
-  const uint64\_t start\_micros = env\_->NowMicros();
-  int64\_t imm\_micros = 0;  // Micros spent doing imm\_ compactions
+  const uint64_t start_micros = env_->NowMicros();
+  int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
 
-  Log(options\_.info\_log,  "Compacting %d@%d + %d@%d files",
-      compact->compaction->num\_input\_files(0),
+  Log(options_.info_log,  "Compacting %d@%d + %d@%d files",
+      compact->compaction->num_input_files(0),
       compact->compaction->level(),
-      compact->compaction->num\_input\_files(1),
+      compact->compaction->num_input_files(1),
       compact->compaction->level() + 1);
 
-  assert(versions\_->NumLevelFiles(compact->compaction->level()) > 0);
+  assert(versions_->NumLevelFiles(compact->compaction->level()) > 0);
   assert(compact->builder == NULL);
   assert(compact->outfile == NULL);
 
   //lzh: 函数注释已经阐明 snapshot 没有被设置时，应该被设置为 leveldb 中当前最大版本号。
   //lzh: 若有多个 snapshot 应该使用最小的那个，以保证更古老的版本数据能够被保存下来
-  if (snapshots\_.empty()) {
-    compact->smallest\_snapshot = versions\_->LastSequence();
+  if (snapshots_.empty()) {
+    compact->smallest_snapshot = versions_->LastSequence();
   } else {
-    compact->smallest\_snapshot = snapshots\_.oldest()->number\_;
+    compact->smallest_snapshot = snapshots_.oldest()->number_;
   }
 
   // Release mutex while we're actually doing the compaction work
-  mutex\_.Unlock();
+  mutex_.Unlock();
 
-  //lzh: 得到遍历所有数据的 Iterator. 它将正序遍历所有的 Internalkey，相同的 user\_key 越新的版本越前面被遍历到
-  Iterator* input = versions\_->MakeInputIterator(compact->compaction);
+  //lzh: 得到遍历所有数据的 Iterator. 它将正序遍历所有的 Internalkey，相同的 user_key 越新的版本越前面被遍历到
+  Iterator* input = versions_->MakeInputIterator(compact->compaction);
 
-  //input = getTestIterator(compact->smallest\_snapshot);
+  //input = getTestIterator(compact->smallest_snapshot);
 
   input->SeekToFirst();
   Status status;
   ParsedInternalKey ikey;	//当前正遍历到的 internal key
 
-  std::string current\_user\_key;	//当前遍历到的 user\_key。
+  std::string current_user_key;	//当前遍历到的 user_key。
 
-  //lzh: current\_user\_key 是否有效。还没有开始遍历，或者解析失败时此值为 false
-  bool has\_current\_user\_key = false;
+  //lzh: current_user_key 是否有效。还没有开始遍历，或者解析失败时此值为 false
+  bool has_current_user_key = false;
 
-  //lzh: 上一次遍历到的当前 user\_key 的 sequence number。
-  //lzh: 还没有开始遍历，或者解析失败时，或者当前的 user\_key 是首次遍历到，则此值为 kMaxSequenceNumber。保证每第一次遍历到的 user\_key 不被 drop
-  SequenceNumber last\_sequence\_for\_key = kMaxSequenceNumber;
+  //lzh: 上一次遍历到的当前 user_key 的 sequence number。
+  //lzh: 还没有开始遍历，或者解析失败时，或者当前的 user_key 是首次遍历到，则此值为 kMaxSequenceNumber。保证每第一次遍历到的 user_key 不被 drop
+  SequenceNumber last_sequence_for_key = kMaxSequenceNumber;
 
   //lzh: 依次遍历, 若不 drop, 则 compact
-  for (; input->Valid() && !shutting\_down\_.Acquire\_Load(); ) {
+  for (; input->Valid() && !shutting_down_.Acquire_Load(); ) {
     // Prioritize immutable compaction work
-    if (has\_imm\_.NoBarrier\_Load() != NULL) {
-      const uint64\_t imm\_start = env\_->NowMicros();
-      mutex\_.Lock();
-      if (imm\_ != NULL) {
+    if (has_imm_.NoBarrier_Load() != NULL) {
+      const uint64_t imm_start = env_->NowMicros();
+      mutex_.Lock();
+      if (imm_ != NULL) {
         CompactMemTable();	//lzh: 将内存中的 mem 导出到磁盘上的 sst 文件(作为第 0 层)
-        bg\_cv\_.SignalAll();  // Wakeup MakeRoomForWrite() if necessary
+        bg_cv_.SignalAll();  // Wakeup MakeRoomForWrite() if necessary
       }
-      mutex\_.Unlock();
-      imm\_micros += (env\_->NowMicros() - imm\_start);
+      mutex_.Unlock();
+      imm_micros += (env_->NowMicros() - imm_start);
     }
 
     Slice key = input->key();
@@ -232,38 +232,38 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
     bool drop = false;
     if (!ParseInternalKey(key, &ikey)) {
       // Do not hide error keys
-      current\_user\_key.clear();
-      has\_current\_user\_key = false;
-      last\_sequence\_for\_key = kMaxSequenceNumber;
+      current_user_key.clear();
+      has_current_user_key = false;
+      last_sequence_for_key = kMaxSequenceNumber;
     } else 
 	{
-	  // lzh: 首次遇到 ikey.user\_key 这个 user\_key
-      if (!has\_current\_user\_key ||	//lzh: !has\_current\_user\_key 表示上一个 ikey 解析失败或者当前是第一次解析
-          user\_comparator()->Compare(ikey.user\_key,
-                                     Slice(current\_user\_key)) != 0) {	//lzh: 表示当前的 ikey.user\_key 与 current\_user\_key 不相等
+	  // lzh: 首次遇到 ikey.user_key 这个 user_key
+      if (!has_current_user_key ||	//lzh: !has_current_user_key 表示上一个 ikey 解析失败或者当前是第一次解析
+          user_comparator()->Compare(ikey.user_key,
+                                     Slice(current_user_key)) != 0) {	//lzh: 表示当前的 ikey.user_key 与 current_user_key 不相等
         // First occurrence of this user key
 		
-        current\_user\_key.assign(ikey.user\_key.data(), ikey.user\_key.size());
-        has\_current\_user\_key = true;
-        last\_sequence\_for\_key = kMaxSequenceNumber;	//lzh: 当前 ikey.user\_key 是首次遇到，设置 last\_sequence\_for\_key=kMaxSequenceNumber 保证当前 ikey 不被 drop
+        current_user_key.assign(ikey.user_key.data(), ikey.user_key.size());
+        has_current_user_key = true;
+        last_sequence_for_key = kMaxSequenceNumber;	//lzh: 当前 ikey.user_key 是首次遇到，设置 last_sequence_for_key=kMaxSequenceNumber 保证当前 ikey 不被 drop
       }
 	  
-	  //lzh: 当前 user\_key 的上一个版本 <= snapshot，我们把上一个版本保留下来，以满足 snapshot 的功能：为每个 user\_key 保留一个小于等于 snapshot 的最大版本号。
-	  //lzh: 从当前版本开始(包括在内)，后续所有当前 user\_key 的更旧版本可以 drop 了。
-      if (last\_sequence\_for\_key <= compact->smallest\_snapshot) {
+	  //lzh: 当前 user_key 的上一个版本 <= snapshot，我们把上一个版本保留下来，以满足 snapshot 的功能：为每个 user_key 保留一个小于等于 snapshot 的最大版本号。
+	  //lzh: 从当前版本开始(包括在内)，后续所有当前 user_key 的更旧版本可以 drop 了。
+      if (last_sequence_for_key <= compact->smallest_snapshot) {
         // Hidden by an newer entry for same user key
         drop = true;    // (A)
       } else if (ikey.type == kTypeDeletion &&
-                 ikey.sequence <= compact->smallest\_snapshot &&
-                 compact->compaction->IsBaseLevelForKey(ikey.user\_key)) 
+                 ikey.sequence <= compact->smallest_snapshot &&
+                 compact->compaction->IsBaseLevelForKey(ikey.user_key)) 
 	  {
-		  //lzh: 若当前 user\_key 上一个版本 > snapshot，但当前 user\_key 的 type 是 deletion，那么什么情况下可以 drop 掉这个版本呢？
-		  //lzh: 1.当前是要将 level\_ 层和 level\_+1 层 compact，如果当前 user\_key 出现在比level\_+1 层更高的层次，那么这个 kv 必然不能被 drop 掉，
+		  //lzh: 若当前 user_key 上一个版本 > snapshot，但当前 user_key 的 type 是 deletion，那么什么情况下可以 drop 掉这个版本呢？
+		  //lzh: 1.当前是要将 level_ 层和 level_+1 层 compact，如果当前 user_key 出现在比level_+1 层更高的层次，那么这个 kv 必然不能被 drop 掉，
 		  //lzh: 否则，其它层可能存在的更旧的版本就会被使用，这将导致逻辑错误。
-		  //lzh: 2.若当前版本大于数据库设置的最小快照号 smallest\_snapshot 仍然将它 drop 掉
-		  //lzh: 注意当前的 user\_key 是 deletion 版本，为了保持逻辑的正确性：相同 user\_key 的 deletion 版本后面的版本是无效的，还需要将此 user\_key 后续版本全部 drop
-		  //lzh: 但是这样一来快照功能的逻辑就错了：我们的查找范围是所有小于等于 snapshot 的版本。因为我们已经删除了所有的较旧版本的 user\_key，所以使用快照功能也无法访问了，
-		  //lzh: 虽然在一个较旧的时刻，user\_key 最新的版本是有效的，在快照下应该是可访问的。
+		  //lzh: 2.若当前版本大于数据库设置的最小快照号 smallest_snapshot 仍然将它 drop 掉
+		  //lzh: 注意当前的 user_key 是 deletion 版本，为了保持逻辑的正确性：相同 user_key 的 deletion 版本后面的版本是无效的，还需要将此 user_key 后续版本全部 drop
+		  //lzh: 但是这样一来快照功能的逻辑就错了：我们的查找范围是所有小于等于 snapshot 的版本。因为我们已经删除了所有的较旧版本的 user_key，所以使用快照功能也无法访问了，
+		  //lzh: 虽然在一个较旧的时刻，user_key 最新的版本是有效的，在快照下应该是可访问的。
 		  //lzh: 综上，所以判断的条件有以上三个。
 		  
         // For this user key:
@@ -276,23 +276,23 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
         drop = true;
       }
 
-	  //lzh: 在赋值之前 last\_sequence\_for\_key 指的是前一次遍历到的当前 user\_key 的版本。若当次是首次遍历到当前 user\_key 则此值在赋值前为 kMaxSequenceNumber
-      last\_sequence\_for\_key = ikey.sequence;
+	  //lzh: 在赋值之前 last_sequence_for_key 指的是前一次遍历到的当前 user_key 的版本。若当次是首次遍历到当前 user_key 则此值在赋值前为 kMaxSequenceNumber
+      last_sequence_for_key = ikey.sequence;
     }
 #if 0
-    Log(options\_.info\_log,
-        "  Compact: %s, seq %d, type: %d %d, drop: %d, is\_base: %d, "
-        "%d smallest\_snapshot: %d",
-        ikey.user\_key.ToString().c\_str(),
+    Log(options_.info_log,
+        "  Compact: %s, seq %d, type: %d %d, drop: %d, is_base: %d, "
+        "%d smallest_snapshot: %d",
+        ikey.user_key.ToString().c_str(),
         (int)ikey.sequence, ikey.type, kTypeValue, drop,
-        compact->compaction->IsBaseLevelForKey(ikey.user\_key),
-        (int)last\_sequence\_for\_key, (int)compact->smallest\_snapshot);
+        compact->compaction->IsBaseLevelForKey(ikey.user_key),
+        (int)last_sequence_for_key, (int)compact->smallest_snapshot);
 #endif
 
 	//lzh: 当前 input->key 被 drop 掉, 不用 compact 到文件中
     if (!drop) {
       // Open output file if necessary
-		//lzh: 如果首次进入此分支， compaction 没有初始化(没有生成 file\_number, 没有生成文件, 建立 sst 对应的内存 table), 那么需要初始化
+		//lzh: 如果首次进入此分支， compaction 没有初始化(没有生成 file_number, 没有生成文件, 建立 sst 对应的内存 table), 那么需要初始化
       if (compact->builder == NULL) {
         status = OpenCompactionOutputFile(compact);
         if (!status.ok()) {
@@ -302,11 +302,11 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
 	  //lzh: 如果 sst 文件对应的内存 table 中没有数据, 则当前被加入的 key 作为 smallest. (注意 key 是正序遍历的, 所以此逻辑是正确的)
       if (compact->builder->NumEntries() == 0) {
-        compact->current\_output()->smallest.DecodeFrom(key);
+        compact->current_output()->smallest.DecodeFrom(key);
       }
 	  
 	  //lzh: key 是正序遍历的，所以每次新加入的 key 就是最大值
-      compact->current\_output()->largest.DecodeFrom(key);
+      compact->current_output()->largest.DecodeFrom(key);
 
 	  //lzh: (key, value) 加入到 sst 内存 table 中
       compact->builder->Add(key, input->value());
@@ -325,7 +325,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
     input->Next();
   }
 
-  if (status.ok() && shutting\_down\_.Acquire\_Load()) {
+  if (status.ok() && shutting_down_.Acquire_Load()) {
     status = Status::IOError("Deleting DB during compaction");
   }
 
@@ -340,26 +340,26 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   input = NULL;
 
   CompactionStats stats;
-  stats.micros = env\_->NowMicros() - start\_micros - imm\_micros;
+  stats.micros = env_->NowMicros() - start_micros - imm_micros;
   for (int which = 0; which < 2; which++) {
-    for (int i = 0; i < compact->compaction->num\_input\_files(which); i++) {
-      stats.bytes\_read += compact->compaction->input(which, i)->file\_size;
+    for (int i = 0; i < compact->compaction->num_input_files(which); i++) {
+      stats.bytes_read += compact->compaction->input(which, i)->file_size;
     }
   }
-  for (size\_t i = 0; i < compact->outputs.size(); i++) {
-    stats.bytes\_written += compact->outputs[i].file\_size;
+  for (size_t i = 0; i < compact->outputs.size(); i++) {
+    stats.bytes_written += compact->outputs[i].file_size;
   }
 
-  mutex\_.Lock();
-  stats\_[compact->compaction->level() + 1].Add(stats);
+  mutex_.Lock();
+  stats_[compact->compaction->level() + 1].Add(stats);
 
   //lzh: 最终将所有生成的 sst 文件应用到内存版本管理, sst 文件层次管理中
   if (status.ok()) {
     status = InstallCompactionResults(compact);
   }
   VersionSet::LevelSummaryStorage tmp;
-  Log(options\_.info\_log,
-      "compacted to: %s", versions\_->LevelSummary(&tmp));
+  Log(options_.info_log,
+      "compacted to: %s", versions_->LevelSummary(&tmp));
   return status;
 }
 
@@ -369,15 +369,15 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 	lzh:	
 		要点1:
 			leveldb 提供了两种触发 compaction 的条件/方式:
-			size\_compaction: 基于文件大小触发的 compaction. 这样做的动机是 leveldb 的层次控制: 高层的文件比低层的要大, 约 10 倍
+			size_compaction: 基于文件大小触发的 compaction. 这样做的动机是 leveldb 的层次控制: 高层的文件比低层的要大, 约 10 倍
 
-			seek\_compaction:	基于文件“被经过但不命中”的次数达到阈值触发的 compaction. 
+			seek_compaction:	基于文件“被经过但不命中”的次数达到阈值触发的 compaction. 
 								这样做的动机是消灭稀疏的文件, 将它放入更高层的文件中, 提高文件的稠密度提高查询效率.
 								文件太稀疏了: 文件的区间(smallest--largest)太大了, 含有的 kv 对只有那么多, 很多查找的键落在此范围但不被命中
 								这会形成查找的阻碍，将此文件填充到高一层文件中, 提高查询效率
 		要点2:		
-			c->inputs\_[0] 是 level 层需要 compact 的文件集合
-			c->inputs\_[1] 是 level+1 层需要 compact 的文件集合
+			c->inputs_[0] 是 level 层需要 compact 的文件集合
+			c->inputs_[1] 是 level+1 层需要 compact 的文件集合
 */
 /************************************************************************/
 Compaction* VersionSet::PickCompaction() {
@@ -386,59 +386,59 @@ Compaction* VersionSet::PickCompaction() {
 
   // We prefer compactions triggered by too much data in a level over
   // the compactions triggered by seeks.
-  //lzh; 优先执行 size\_compaction
-  const bool size\_compaction = (current\_->compaction\_score\_ >= 1);
+  //lzh; 优先执行 size_compaction
+  const bool size_compaction = (current_->compaction_score_ >= 1);
 
-  //lzh: 在 db->Get 中若对多于一个的 sst 文件/缓存 seek 的次数过多, 则  current\_->file\_to\_compact\_ 会被设置
-  const bool seek\_compaction = (current\_->file\_to\_compact\_ != NULL);
-  if (size\_compaction) {
-    level = current\_->compaction\_level\_;
+  //lzh: 在 db->Get 中若对多于一个的 sst 文件/缓存 seek 的次数过多, 则  current_->file_to_compact_ 会被设置
+  const bool seek_compaction = (current_->file_to_compact_ != NULL);
+  if (size_compaction) {
+    level = current_->compaction_level_;
     assert(level >= 0);
     assert(level+1 < config::kNumLevels);
     c = new Compaction(level);
 
-    // Pick the first file that comes after compact\_pointer\_[level]
-	//lzh: 选出首个最大值大于 compact\_pointer[level] 的 sst 文件
-	//lzh: http://catkang.github.io/2017/02/03/leveldb-version.html Version中会记录每层上次Compaction结束后的最大Key值compact\_pointer\_，
+    // Pick the first file that comes after compact_pointer_[level]
+	//lzh: 选出首个最大值大于 compact_pointer[level] 的 sst 文件
+	//lzh: http://catkang.github.io/2017/02/03/leveldb-version.html Version中会记录每层上次Compaction结束后的最大Key值compact_pointer_，
 	//lzh: 下一次触发自动Compaction会从这个Key开始。容量触发的优先级高于下面将要提到的Seek触发。
-    for (size\_t i = 0; i < current\_->files\_[level].size(); i++) {
-      FileMetaData* f = current\_->files\_[level][i];
-      if (compact\_pointer\_[level].empty() ||		//lzh: 本层 compact\_pointer\_ 以前的文件都已经被 compact 过
-          icmp\_.Compare(f->largest.Encode(), compact\_pointer\_[level]) > 0)	//lzh: compact\_pointer\_ 以后的(没 compact 过)文件纳入 compact 范围
+    for (size_t i = 0; i < current_->files_[level].size(); i++) {
+      FileMetaData* f = current_->files_[level][i];
+      if (compact_pointer_[level].empty() ||		//lzh: 本层 compact_pointer_ 以前的文件都已经被 compact 过
+          icmp_.Compare(f->largest.Encode(), compact_pointer_[level]) > 0)	//lzh: compact_pointer_ 以后的(没 compact 过)文件纳入 compact 范围
 	  {
-        c->inputs\_[0].push\_back(f);
+        c->inputs_[0].push_back(f);
         break;
       }
     }
 
-	//lzh: c->inputs\_[0].empty() 说明 level 层所有的文件之前都已经 compact 过. 但是本函数仍被调用, 进一步说明由于某些情况(如本层 size 仍较大, 或触发了 seek\_compaction)
+	//lzh: c->inputs_[0].empty() 说明 level 层所有的文件之前都已经 compact 过. 但是本函数仍被调用, 进一步说明由于某些情况(如本层 size 仍较大, 或触发了 seek_compaction)
 	//lzh: 需要再次 compact, 所以从本层第一个文件开始.
-    if (c->inputs\_[0].empty()) {
+    if (c->inputs_[0].empty()) {
       // Wrap-around to the beginning of the key space
-      c->inputs\_[0].push\_back(current\_->files\_[level][0]);
+      c->inputs_[0].push_back(current_->files_[level][0]);
     }
-  } else if (seek\_compaction) {
-    level = current\_->file\_to\_compact\_level\_;
+  } else if (seek_compaction) {
+    level = current_->file_to_compact_level_;
     c = new Compaction(level);
 
-	//lzh: 将 level 层的 current\_->file\_to\_compact\_ 文件 compact 到 level+1 层
-    c->inputs\_[0].push\_back(current\_->file\_to\_compact\_);
+	//lzh: 将 level 层的 current_->file_to_compact_ 文件 compact 到 level+1 层
+    c->inputs_[0].push_back(current_->file_to_compact_);
   } else {
     return NULL;
   }
 
-  c->input\_version\_ = current\_;
-  c->input\_version\_->Ref();
+  c->input_version_ = current_;
+  c->input_version_->Ref();
 
   // Files in level 0 may overlap each other, so pick up all overlapping ones
   if (level == 0) {
     InternalKey smallest, largest;
-    GetRange(c->inputs\_[0], &smallest, &largest);
+    GetRange(c->inputs_[0], &smallest, &largest);
     // Note that the next call will discard the file we placed in
-    // c->inputs\_[0] earlier and replace it with an overlapping set
+    // c->inputs_[0] earlier and replace it with an overlapping set
     // which will include the picked file.
-    GetOverlappingInputs(0, smallest, largest, &c->inputs\_[0]);
-    assert(!c->inputs\_[0].empty());
+    GetOverlappingInputs(0, smallest, largest, &c->inputs_[0]);
+    assert(!c->inputs_[0].empty());
   }
 
   //lzh: 找到另外 compact 的输入文件
@@ -451,55 +451,55 @@ Compaction* VersionSet::PickCompaction() {
 /* 
 	lzh: 此函数被两处调用: PickCompaction 和 CompactRange
 
-	c->inputs\_[0] 简写为 c[0], c->inputs\_[1] 简写为 c[1]
+	c->inputs_[0] 简写为 c[0], c->inputs_[1] 简写为 c[1]
 	
 	1. PickCompaction 中 level 上的一个待 compact 的文件集合是 c[0]. (注意第 0 层的特殊情况. 详见 PickCompaction 最末的处理)
 
-	2. 由上面的 c[0] 与 level+1 层相交的文件得到 c[1], c[0],c[1] 范围是 (all\_start, all\_limit)
+	2. 由上面的 c[0] 与 level+1 层相交的文件得到 c[1], c[0],c[1] 范围是 (all_start, all_limit)
 
 	3. 若 c[1] 不为空则继续扩展: level 层与 (c[0] 并 c[1]) 相交的文件集合得到 expanded0, 转到 4. 否则转到 6.
 
 	4. 若 expanded0 的大小大于 c[0] 则继续扩展: level+1 层与 expanded0 相交的文件集合得到的 expanded1. 否则转到 6.
 
-	5. 若 expanded1 的大小大于 c[1] 则扩展至此, c[0]=expanded0, c[1]=expanded1, c[0] 范围是 (smallest, largest), c[0]并c[1] 范围是 (all\_start, all\_limit). 否则转到 6.
+	5. 若 expanded1 的大小大于 c[1] 则扩展至此, c[0]=expanded0, c[1]=expanded1, c[0] 范围是 (smallest, largest), c[0]并c[1] 范围是 (all_start, all_limit). 否则转到 6.
 
-	6. 计算 c[0]并c[1] 与 level+2 相交文件集合作为 c->grandparents\_. 计算 level 层下一次 compact 的起始位置是 largest, 即本次compact 的上界c[0].largest
+	6. 计算 c[0]并c[1] 与 level+2 相交文件集合作为 c->grandparents_. 计算 level 层下一次 compact 的起始位置是 largest, 即本次compact 的上界c[0].largest
 */
 /************************************************************************/
 void VersionSet::SetupOtherInputs(Compaction* c) {
   const int level = c->level();
   InternalKey smallest, largest;
-  GetRange(c->inputs\_[0], &smallest, &largest);
+  GetRange(c->inputs_[0], &smallest, &largest);
 
-  GetOverlappingInputs(level+1, smallest, largest, &c->inputs\_[1]);
+  GetOverlappingInputs(level+1, smallest, largest, &c->inputs_[1]);
 
   // Get entire range covered by compaction
-  InternalKey all\_start, all\_limit;
-  GetRange2(c->inputs\_[0], c->inputs\_[1], &all\_start, &all\_limit);
+  InternalKey all_start, all_limit;
+  GetRange2(c->inputs_[0], c->inputs_[1], &all_start, &all_limit);
 
   // See if we can grow the number of inputs in "level" without
   // changing the number of "level+1" files we pick up.
-  if (!c->inputs\_[1].empty()) {
+  if (!c->inputs_[1].empty()) {
     std::vector<FileMetaData*> expanded0;
-    GetOverlappingInputs(level, all\_start, all\_limit, &expanded0);
-    if (expanded0.size() > c->inputs\_[0].size()) {
-      InternalKey new\_start, new\_limit;
-      GetRange(expanded0, &new\_start, &new\_limit);
+    GetOverlappingInputs(level, all_start, all_limit, &expanded0);
+    if (expanded0.size() > c->inputs_[0].size()) {
+      InternalKey new_start, new_limit;
+      GetRange(expanded0, &new_start, &new_limit);
       std::vector<FileMetaData*> expanded1;
-      GetOverlappingInputs(level+1, new\_start, new\_limit, &expanded1);
-      if (expanded1.size() == c->inputs\_[1].size()) {
-        Log(options\_->info\_log,
+      GetOverlappingInputs(level+1, new_start, new_limit, &expanded1);
+      if (expanded1.size() == c->inputs_[1].size()) {
+        Log(options_->info_log,
             "Expanding@%d %d+%d to %d+%d\n",
             level,
-            int(c->inputs\_[0].size()),
-            int(c->inputs\_[1].size()),
+            int(c->inputs_[0].size()),
+            int(c->inputs_[1].size()),
             int(expanded0.size()),
             int(expanded1.size()));
-        smallest = new\_start;
-        largest = new\_limit;
-        c->inputs\_[0] = expanded0;
-        c->inputs\_[1] = expanded1;
-        GetRange2(c->inputs\_[0], c->inputs\_[1], &all\_start, &all\_limit);
+        smallest = new_start;
+        largest = new_limit;
+        c->inputs_[0] = expanded0;
+        c->inputs_[1] = expanded1;
+        GetRange2(c->inputs_[0], c->inputs_[1], &all_start, &all_limit);
       }
     }
   }
@@ -507,22 +507,22 @@ void VersionSet::SetupOtherInputs(Compaction* c) {
   // Compute the set of grandparent files that overlap this compaction
   // (parent == level+1; grandparent == level+2)
   if (level + 2 < config::kNumLevels) {
-    GetOverlappingInputs(level + 2, all\_start, all\_limit, &c->grandparents\_);
+    GetOverlappingInputs(level + 2, all_start, all_limit, &c->grandparents_);
   }
 
   if (false) {
-    Log(options\_->info\_log, "Compacting %d '%s' .. '%s'",
+    Log(options_->info_log, "Compacting %d '%s' .. '%s'",
         level,
-        EscapeString(smallest.Encode()).c\_str(),
-        EscapeString(largest.Encode()).c\_str());
+        EscapeString(smallest.Encode()).c_str(),
+        EscapeString(largest.Encode()).c_str());
   }
 
   // Update the place where we will do the next compaction for this level.
   // We update this immediately instead of waiting for the VersionEdit
   // to be applied so that if the compaction fails, we will try a different
   // key range next time.
-  compact\_pointer\_[level] = largest.Encode().ToString();
-  c->edit\_.SetCompactPointer(level, largest);
+  compact_pointer_[level] = largest.Encode().ToString();
+  c->edit_.SetCompactPointer(level, largest);
 }
 
 ```
