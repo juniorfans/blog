@@ -61,7 +61,7 @@ compact\_pointer\_ 正是在每次确认 compaction 输入文件后被更新。
 			范围是 	(all\_start, all\_limit)；否则转到 2.5)
 		- 2.5)计算 c[0]并c[1] 与 level+2 相交文件集合作为 c->grandparents\_，将 level 层下一次 compact 的起始位置设置为本次 level 层上
 		compact 的上界  c[0].largest
-	
+	   
 	第2点如行云流水般的扩展输入文件的做法，本质上是：
 		- a).c[0]与 level+1 层的文件求相交得到 c[1]：是为了防止 level 层的文件 c[0] compact 到 level+1 中造成重叠，这会
 			导致逻辑错误，违背“除了第0层外所有层上的文件各不相交”，所以要将 c[1] 这些文件单独拿出来，与 c[0] 一起，compact 到 level+1 层
@@ -70,7 +70,7 @@ compact\_pointer\_ 正是在每次确认 compaction 输入文件后被更新。
 		- c).因 expanded0 将会 compact 到 level+1 中，所以需要找到它与 level+1 层的相交，同样它需要从 level+1 拿出，再 compact 回去，
 		这一部分加上c[1]，记为 expanded1，
 		- d).若 expanded1 和 expanded0 较原来的 c[1], c[0] 都要大，则说明扩展是有效的，接下来便用 expanded0 和 expanded1 执行 compact。
-	 		
+	 	
 ##Snapshot
 在 compaction 这一章顺带讲 snapshot 是合适的，因为它与 compaction 关联实在太紧密了，而它单独成一章又无从讲起了。
 snapshot，即快照，赋予了使用者查找在过去某一个瞬间数据库状态的能力：在那一时刻，整个 leveldb 有哪些数据，什么版本。
@@ -79,7 +79,7 @@ leveldb 会冗余地存储很多旧版本的数据。我们有可能误删了数
 - 1.前面说过，应该冗余存储旧版本数据。那么应该保留多老的数据呢？
 联想到 leveldb 中任何一个数据(键值对)都有一个整数版本号 sequence number，我们也可以用一个整数来告诉 leveldb 对每个 user\_key 都应该至少保留一个小于这个整数的版本(如果这个 user\_key 有小于此整数的版本的话)。这个整数即是 snapshot。
 只要 user\_key 在那个时刻(产生 snapshot 这个版本的时刻)有版本(即 user\_key 存在小于等于 snapshot 的版本)， 则我们应该返回这个时刻当
-时最新的版本，即 user\_key 的所有版本中小于等于 snapshot 的最大版本。
+时最新的版本，即 user\_key 的所有版本中小于等于 snapshot 的最大版本。 
 snapshot 的值必然比当前 leveldb 最新版本号小：最新版本号时时刻刻都是整个 leveldb 中最大的版本号。
 - 2.结合1，我们应该如何使用 snapshot 以对每个 user\_key 保存一个小于等于它的版本呢？我们在每次新写入时不可能做到这点，最新版本号作为
 snapshot 没有意义：违背了快照的初衷，快照是历史的某时刻状态，并非现在。除了新写入数据，后面唯一一个可以动数据的地方就是 compaction 了。
