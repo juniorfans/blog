@@ -54,24 +54,23 @@ compact\_pointer\_ 正是在每次确认 compaction 输入文件后被更新。
 由上一点中的输入文件，扩大范围，求得最终的输入文件
 	1).若当前 Compaction 的 level 为0，则将与 c[0] 键值相交的第0层文件，加入到 c[0]。
 	2).否则:
-		2.1)由 c[0] 与 level+1 层相交的文件得到 c[1], c[0],c[1] 键值范围是 (all\_start, all\_limit)
-		2.2)若 c[1] 不为空则继续扩展: level 层与 (c[0] 并 c[1]) 相交的文件集合得到 expanded0, 转到 2.3)；否则转到 2.5)
-		2.3)若 expanded0 的大小大于 c[0] 则继续扩展: level+1 层与 expanded0 相交的文件集合得到的 expanded1；否则转到 2.5)
-		2.4)若 expanded1 的大小大于 c[1] 则扩展至此, c[0]=expanded0, c[1]=expanded1, c[0] 范围是 (smallest, largest), c[0]并c[1] 
+		- 2.1)由 c[0] 与 level+1 层相交的文件得到 c[1], c[0],c[1] 键值范围是 (all\_start, all\_limit)
+		- 2.2)若 c[1] 不为空则继续扩展: level 层与 (c[0] 并 c[1]) 相交的文件集合得到 expanded0, 转到 2.3)；否则转到 2.5)
+		- 2.3)若 expanded0 的大小大于 c[0] 则继续扩展: level+1 层与 expanded0 相交的文件集合得到的 expanded1；否则转到 2.5)
+		- 2.4)若 expanded1 的大小大于 c[1] 则扩展至此, c[0]=expanded0, c[1]=expanded1, c[0] 范围是 (smallest, largest), c[0]并c[1] 
 			范围是 	(all\_start, all\_limit)；否则转到 2.5)
-		2.5)计算 c[0]并c[1] 与 level+2 相交文件集合作为 c->grandparents\_，将 level 层下一次 compact 的起始位置设置为本次 level 层上
+		- 2.5)计算 c[0]并c[1] 与 level+2 相交文件集合作为 c->grandparents\_，将 level 层下一次 compact 的起始位置设置为本次 level 层上
 		compact 的上界  c[0].largest
 	
-	以上如行云流水般的扩展输入文件的做法，本质上是：
-		a).c[0]与 level+1 层的文件求相交得到 c[1]：是为了防止 level 层的文件 c[0] compact 到 level+1 中造成重叠，这会
+	第2点如行云流水般的扩展输入文件的做法，本质上是：
+		- a).c[0]与 level+1 层的文件求相交得到 c[1]：是为了防止 level 层的文件 c[0] compact 到 level+1 中造成重叠，这会
 			导致逻辑错误，违背“除了第0层外所有层上的文件各不相交”，所以要将 c[1] 这些文件单独拿出来，与 c[0] 一起，compact 到 level+1 层
-		b).因 a) 中已将 c[1] 单独拿出，所以 level 中与 c[1] 相交的文件可以 compact 到 level+1 层，这一部分 compact 到 level+1
+		- b).因 a) 中已将 c[1] 单独拿出，所以 level 中与 c[1] 相交的文件可以 compact 到 level+1 层，这一部分 compact 到 level+1
 		不会与没有 compact 的部分发生重叠，这一部分加上c[0]，记为 expanded0
-		c).因 expanded0 将会 compact 到 level+1 中，所以需要找到它与 level+1 层的相交，同样它需要从 level+1 拿出，再 compact 回去，
+		- c).因 expanded0 将会 compact 到 level+1 中，所以需要找到它与 level+1 层的相交，同样它需要从 level+1 拿出，再 compact 回去，
 		这一部分加上c[1]，记为 expanded1，
-		d).若 expanded1 和 expanded0 较原来的 c[1], c[0] 都要大，则说明扩展是有效的，接下来便用 expanded0 和 expanded1 执行 compact。
-	
-					
+		- d).若 expanded1 和 expanded0 较原来的 c[1], c[0] 都要大，则说明扩展是有效的，接下来便用 expanded0 和 expanded1 执行 compact。
+	 		
 ##Snapshot
 在 compaction 这一章顺带讲 snapshot 是合适的，因为它与 compaction 关联实在太紧密了，而它单独成一章又无从讲起了。
 snapshot，即快照，赋予了使用者查找在过去某一个瞬间数据库状态的能力：在那一时刻，整个 leveldb 有哪些数据，什么版本。
