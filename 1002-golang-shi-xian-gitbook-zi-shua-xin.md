@@ -21,7 +21,9 @@ gitbook 是安装在本地的一个服务，它可以将本地的 md 文件组�
 - gitbook 书籍目录
 - 要监听的文件的后缀名（一般是 md, jpg, png, bmp 等图片后缀）
 
-将下面代码生成的 exe 置于任意一个目录下，
+将下面代码生成的 exe 置于任意一个目录下，使用命令行：F:\dev\monitor>gitbookMonitor.exe ../blog
+可以开启监控服务（实际使用时将 ../blog 换成真正的书籍目录）。
+
 话不多说，上代码
 
 ```
