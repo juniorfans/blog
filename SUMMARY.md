@@ -6,6 +6,7 @@
 * [3-condvar-spurious-wakeups](3-condvar-spurious-wakeups.md)
 * [1000-golang 工程结构与编译](1000-golang-gong-cheng-jie-gou-yu-bian-yi.md)
 * [1001-golang 与 idea](1001-golang-yu-idea.md)
+* [1002-golang 实现 gitbook 自刷新](1002-golang-shi-xian-gitbook-zi-shua-xin.md)
 * [2000-使用 IDA 破解程序自校验](2000shi-yong-ida-po-jie-cheng-xu-zi-xiao-yan.md)
 * [2001-HTTP/HTTPS 代理与破解](2000-httphttps-dai-li-yu-you-xi-po-jie.md)
 * [3000-leveldb精读系列-Iterator](3000-leveldbjing-du-xi-5217-iterator.md)
@@ -24,5 +25,5 @@
 * [3005-leveldb精读系列-VersionEdit](3005-leveldbjing-du-xi5217-versionedit.md)
 * [3006-leveldb精读系列-builder](3006-leveldbjing-duxi-5217-builder.md)
 * [3007-leveldb精读系列-基础设施](3006-leveldbjing-du-xi-5217-ji-chu-she-shi.md)
-* [3008-leveldb精读系列-兼容性支持](3006-leveldbjing-du-xi-5217-port-zhi-chi-ff0c-c-zhi-chi.md)
+* [1002-golang 实现 gitbook 自刷新](1002-golang-shi-xian-gitbook-zi-shua-xin.md)
 
