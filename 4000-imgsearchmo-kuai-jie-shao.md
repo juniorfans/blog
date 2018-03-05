@@ -54,4 +54,14 @@
 
 预期是 jpeg 文件，通过判断文件魔数(起始两个字节)，发现确实是 0xFFD8。最后两个字节是 0xFFD9。它们是 jpeg 的标准。然而在使用 imgo 库读取图片内容时，发现读取失败: invalid marker。具体也不报说是哪个 marker  有误。尝试使用 java 的 jpeg 库读取：不同图片报出来的 invalid marker 后附加的数字不一样，猜测应该是在某些标记处的值不符合预期。
 
-因此需要了解 jpeg 图片的基本格式。
+因此需要了解 jpeg 图片的基本格式:
+![](/assets/imgSearch/jpeg_marker.png)
+
+很明显，当 jpeg 二进制数据 0xFF 后若跟了非标准的字节则会被算作无效 marker。
+具体如下：
+1)非法的 markder，根据 image.jpeg 库的 reader.go 中描述的 markder，无效的 marker 均小于 C0
+2)Corrupt JPEG data: 'n' extraneous bytes before marker 0xd9 ，意思是说marker: 0xd9 的前面有 n 个多余的字节
+经过排查，发现 1) 会导致解析错误，而 2) 只是一个告警，不会报错。所以我们的解决办法即是删除不合法的 marker 的第一个字节：0xFF
+image.jpeg/reader.go 文件关键位置：
+![](/assets/imgSearch/jpeg_golang_marker_code.png)
+
