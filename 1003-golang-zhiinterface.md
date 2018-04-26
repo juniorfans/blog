@@ -206,7 +206,7 @@ func testItable(threadId int) []CanEat {
         var itableAddrAddr *int = (*int)(unsafe.Pointer(&caneat))
         fmt.Println("thread-", threadId,"itable address: ",*itableAddrAddr)
         
-        //interface 第二个成员存储的是具体类型变量的地址. 在本机上验证两个成员总大小是 16所以下面加 8
+        //interface 第二个成员存储的是具体类型变量的地址. 在本机上验证两个成员总大小是 16 所以下面加 8
         var dataAddrAddr *int = (*int)(unsafe.Pointer(uintptr(unsafe.Pointer(&caneat)) + uintptr(8)))
         fmt.Println("thread-",threadId,"data address: ", *dataAddrAddr)
     }
