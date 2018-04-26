@@ -40,7 +40,7 @@ C++/Java 的多态实现机制在于, 于编译期安插代码, 在构造函数�
 smalltalk, python, javascript 的多态实现机制在于, 运行时动态地去查找相关函数(带缓存的).
 golang 的原理介于这两者之间。
 - interface 包括两个隐藏的字段, 长度均是 uintptr, 即指针大小: 
-- receiver: 简单类型变量的值/或变量的地址
+- receiver: 变量的 **值/或地址**
 - itablePtr: itable 地址(接口表, 内含具体类型的类型信息和实现出的方法的地址).
 
 这两个字段在运行时会被设置, 见注释:
@@ -89,7 +89,7 @@ s.String()
 有一点特别重要, 上图中的 itable func[0] 的值是 ``` (*Binary).String ```, 表示定义于Binary指针上的方法String()。而显示定义的 String 方法则是定义于 Binary 上的。
 ```go
 //itable 中的方法
-func (this *Binary) String() string{
+func (i *Binary) String() string{
 	return strconv.Uitob64(i.Get(), 2)
 }
 
@@ -99,8 +99,38 @@ func (i Binary) String() string {
 }
 
 ```
-这是为何呢？有以下两个原因:
-- 1.
+这是为何呢？
+先给出以下两个结论:
+- 1.当定义 ```func (i *Binary) String()``` 或 ``` func(i Binary) String() ``` 一个时便会暗地里定义另外一个
+- 2.``` func(i *Binary) String() ``` 会被编译为 ``` func String(i *Binary) ```
+以下的代码可验证上面的两点:
+
+```go
+type Fruit struct {
+	name string
+}
+
+func (this  Fruit) Eat() {
+	fmt.Println("in struct eat a fruit: ", this.name)
+}
+
+
+func wrapCall(f func (this Fruit), data Fruit)  {
+	f(data)
+}
+
+func wrapCallPtr(f func (this *Fruit), data *Fruit)  {
+	f(data)
+}
+
+f := Fruit{name:"apple"}
+wrapCall((Fruit).Eat, f)	//ok, "in struct eat a fruit:  apple"
+wrapCallPtr((*Fruit).Eat, &f)	//ok, "in struct eat a fruit:  apple"
+```
+再回到问题: 为什么 itable 中的 String 方法是基于 *Binary 的而不是 Binary 呢？原因是对 interface 调用 String() 方法时, 不知道具体类型 Binary 的大小也不需要知道: 直接使用指针这个定长之物即可: 毕竟任何变量的地址的长度均是一致的. 而再结合上面提到的两点, 即使具体没有显式地定义基于指针的方法, 但暗地里会有一个这样的方法被定义出来，所以可以这样用。
+
+###itable 例外
+那么是不是
 
 ##golang interface 优势
 golang interface 的优势在于, 它是一个松耦合且灵活的规范: 
