@@ -85,7 +85,13 @@ s := Stringer(b)
 s.String()
 ```
 如前, Stringer 这个 interface 有两个字段, tab 指向 itable(Stringer, Binary), data 指向 Binary 类型 变量.
-编译器会将 s.String() 替换为 s.tab.func[0](s.data). 至于为什么是 func[0] 这一点就类型于 C++ 的虚函数了, 下标均是在编译期就可以确定的, 此处 itable 只有一项所以是 func[0]。
+编译器会将 ``` s.String() ``` 替换为 ``` s.tab.func[0](s.data) ```. 至于为什么是 func[0] 这一点就类型于 C++ 的虚函数了, 下标均是在编译期就可以确定的, 此处 itable 只有一项所以是 func[0]。
+有一点特别重要, 上图中的 itable func[0] 的值是 ``` (*Binary).String ```, 表示定义于Binary指针上的方法String():
+```go
+func (this *Binary) String(){
+	...
+}
+```
 
 ##golang interface 优势
 golang interface 的优势在于, 它是一个松耦合且灵活的规范: 
