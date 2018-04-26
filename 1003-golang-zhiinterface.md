@@ -148,7 +148,7 @@ wrapCallPtr((*Fruit).Eat, &f)    //ok, "in struct eat a fruit:  apple"
 
 ### itable 值语义
 
-有一点可能没有提及: itable 中的 data 成员, 大多数情况它存储的是一个地址. 当有 `var a Animal = c` 这句代码时, data 所指的变量是否是 c 呢? 我们注意以 golang 是纯粹的值语义: 结构体赋值, 数组赋值, map 赋值\(map 内含的hashtable 指针, 也是值语义\), 切片\(内含数组指针, 长度, 容量, 也是值语义\)等，为了保持值语义，将具体类型变量赋值给 interface 时，不违反值语义的直觉，所以要切断具体类型变量与 interface 变量的联系--采用了拷贝具体类型变量并让 data 指向它。
+有一点可能没有提及: itable 中的 data 成员, 大多数情况它存储的是一个地址. 当有 `var a Animal = c` 这句代码时, data 所指的变量是否是 c 呢? 我们注意到 golang 是纯粹的值语义: 结构体赋值, 数组赋值, map 赋值\(map 内含的hashtable 指针, 也是值语义\), 切片\(内含数组指针, 长度, 容量, 也是值语义\)等，为了保持值语义，将具体类型变量赋值给 interface 时，不违反值语义的直觉，所以要切断具体类型变量与 interface 变量的联系--采用了拷贝具体类型变量并让 data 指向它。
 
 ### 例外
 
