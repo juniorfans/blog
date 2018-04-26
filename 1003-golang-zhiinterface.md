@@ -21,7 +21,7 @@ type Cat struct{
 }
 
 func (c Cat) Say(){
-    fmt.println("i am a cat")
+    fmt.println("i am a cat") 
 }
 
 func (c Cat) Eat(){
