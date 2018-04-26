@@ -39,7 +39,7 @@ a.Say()	//调用 Cat.Say(c)
 C++/Java 的多态实现机制在于, 于编译期安插代码, 在构造函数中设置好函数表, 析构函数中删除函数表.
 smalltalk, python, javascript 的多态实现机制在于, 运行时动态地去查找相关函数(带缓存的).
 golang 的原理介于这两者之间。
-- interface 包括两个隐藏的字段, 长度均是 uintptr, 即指针大小: 
+interface 包括两个隐藏的字段, 长度均是 uintptr, 即指针大小: 
 - receiver: 变量的 **值/或地址**
 - itablePtr: itable 地址(接口表, 内含具体类型的类型信息和实现出的方法的地址).
 
