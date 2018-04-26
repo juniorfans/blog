@@ -39,9 +39,9 @@ a.Say()	//调用 Cat.Say(c)
 C++/Java 的多态实现机制在于, 于编译期安插代码, 在构造函数中设置好函数表, 析构函数中删除函数表.
 smalltalk, python, javascript 的多态实现机制在于, 运行时动态地去查找相关函数(带缓存的).
 golang 的原理介于这两者之间。
-interface 包括两个隐藏的字段, 长度均是 uintptr, 即指针大小: 
-receiver: 简单类型变量的值/或变量的地址
-itablePtr: itable 地址(接口表, 内含具体类型的类型信息和实现出的方法的地址).
+- interface 包括两个隐藏的字段, 长度均是 uintptr, 即指针大小: 
+- receiver: 简单类型变量的值/或变量的地址
+- itablePtr: itable 地址(接口表, 内含具体类型的类型信息和实现出的方法的地址).
 
 这两个字段在运行时会被设置, 见注释:
 ```go
@@ -58,8 +58,8 @@ itablePtr 所指向的 itable 是对应于 interface 的, 而非具体类型的,
 若程序中出现多次, 每一次 var a Animal = c 被执行时, 都会去生成 (Animal, Cat) 的 itable 吗? 从存储及运行效率来讲, 显然不会. 直觉上我们
 认为应该只会有一份 itable. 同时直觉上我们可能会认为, 如果该代码在高并发情况下运行, 是否可能为 (Animal, Cat) 生成两个 itable. 打开
 iface.go 源码, 我们发现几个事实:
-1.itable 是全局的, 并且是以 (interface+具体类型) 计算的 hash 值去关联的.
-2.itabsinit 和 getitab 中均加锁了, 所以不会有并发问题.
+- 1.itable 是全局的, 并且是以 (interface+具体类型) 计算的 hash 值去关联的.
+- 2.itabsinit 和 getitab 中均加锁了, 所以不会有并发问题.
 
 ###inside the itable
 itable 包含以下成员:
@@ -86,12 +86,21 @@ s.String()
 ```
 如前, Stringer 这个 interface 有两个字段, tab 指向 itable(Stringer, Binary), data 指向 Binary 类型 变量.
 编译器会将 ``` s.String() ``` 替换为 ``` s.tab.func[0](s.data) ```. 至于为什么是 func[0] 这一点就类型于 C++ 的虚函数了, 下标均是在编译期就可以确定的, 此处 itable 只有一项所以是 func[0]。
-有一点特别重要, 上图中的 itable func[0] 的值是 ``` (*Binary).String ```, 表示定义于Binary指针上的方法String():
+有一点特别重要, 上图中的 itable func[0] 的值是 ``` (*Binary).String ```, 表示定义于Binary指针上的方法String()。而显示定义的 String 方法则是定义于 Binary 上的。
 ```go
-func (this *Binary) String(){
-	...
+//itable 中的方法
+func (this *Binary) String() string{
+	return strconv.Uitob64(i.Get(), 2)
 }
+
+//实际定义的方法
+func (i Binary) String() string {
+    return strconv.Uitob64(i.Get(), 2)
+}
+
 ```
+这是为何呢？有以下两个原因:
+- 1.
 
 ##golang interface 优势
 golang interface 的优势在于, 它是一个松耦合且灵活的规范: 
