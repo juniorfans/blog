@@ -175,7 +175,7 @@ golang interface 的优势在于, 它是一个松耦合且灵活的规范:
 
 ## 并发环境下的 itable
 
-验证并发环境下始终人有一个 itable 被产生.
+验证并发环境下始终只有一个 itable 被产生.
 
 ```go
 type CanEat interface {
