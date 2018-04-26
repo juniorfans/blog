@@ -129,8 +129,12 @@ wrapCallPtr((*Fruit).Eat, &f)	//ok, "in struct eat a fruit:  apple"
 ```
 再回到问题: 为什么 itable 中的 String 方法是基于 *Binary 的而不是 Binary 呢？原因是对 interface 调用 String() 方法时, 不知道具体类型 Binary 的大小也不需要知道: 直接使用指针这个定长之物即可: 毕竟任何变量的地址的长度均是一致的. 而再结合上面提到的两点, 即使具体没有显式地定义基于指针的方法, 但暗地里会有一个这样的方法被定义出来，所以可以这样用。
 
-###itable 例外
-那么是不是
+###itable 值语义
+有一点可能没有提及: itable 中的 data 成员, 大多数情况它存储的是一个地址. 当有 ``` var a Animal = c ``` 这句代码时, data 所指的变量是否是 c 呢? 我们注意以 golang 是纯粹的值语义: 结构体赋值, 数组赋值, map 赋值(map 内含的hashtable 指针, 也是值语义), 切片(内含数组指针, 长度, 容量, 也是值语义)等，为了保持值语义，将具体类型变量赋值给 interface 时，不违反值语义的直觉，所以要切断具体类型变量与 interface 变量的联系--采用了拷贝具体类型变量并让 data 指向它。
+
+###例外
+当具体类型占空间少于等于指针大小时, data 字段直接存储即可，不需要另外分配空间，再让 data 指向它。对应的，itable 中的方法不再是基于指针的，而是直接基于具体类型的。
+
 
 ##golang interface 优势
 golang interface 的优势在于, 它是一个松耦合且灵活的规范: 
