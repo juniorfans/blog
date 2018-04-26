@@ -66,19 +66,21 @@ itablePtr 所指向的 itable 是对应于 interface 的, 而非具体类型的,
 
 ### 如何生成 itable
 
-若程序中出现多次, 每一次 ```var a Animal = c``` 被执行时, 都会去生成 \(Animal, Cat\) 的 itable 吗? 从存储及运行效率来讲, 显然不会. 直觉上我们  
+若程序中出现多次, 每一次 `var a Animal = c` 被执行时, 都会去生成 \(Animal, Cat\) 的 itable 吗? 从存储及运行效率来讲, 显然不会. 直觉上我们  
 认为应该只会有一份 itable. 同时直觉上我们可能会认为, 如果该代码在高并发情况下运行, 是否可能为 \(Animal, Cat\) 生成多个 itable. 打开  iface.go 源码, 我们发现几个事实:
 
 * 1.itable 是全局的, 并且是以 \(interface+具体类型\) 计算的 hash 值去关联的.
 * 2.itabsinit 和 getitab 中均加锁了, 所以不会有并发问题.
 
-在文章的最后给出验证代码, 在并发环境下执行 ```var a Animal = c``` 确实只有一个 itable 被产生.
+在文章的最后给出验证代码, 在并发环境下执行 `var a Animal = c` 确实只有一个 itable 被产生.
+
 ### inside the itable
 
-itable 包含以下成员:  
-- 接口信息 InterfaceInfo \(即字符串化的方法签名数组, 用于运行时反射得到接口信息\)  
-- 类型信息 TypeInfo \(字符串化的方法签名与方法地址对应关系之数组, 用于运行时反射得到类型信息\)  
-- 方法地址列表\(用于直接在 itablePtr 上调用方法\)  
+itable 包含以下成员:
+
+* 接口信息 InterfaceInfo \(即字符串化的方法签名数组, 用于运行时反射得到接口信息\)  
+* 类型信息 TypeInfo \(字符串化的方法签名与方法地址对应关系之数组, 用于运行时反射得到类型信息\)  
+* 方法地址列表\(用于直接在 itablePtr 上调用方法\)  
 
 下图是一张经典的 itable 图示, 环境是 32 位机器字长:
 
@@ -172,87 +174,95 @@ golang interface 的优势在于, 它是一个松耦合且灵活的规范:
   反观 java, 具体类必须在一开始就要声明它实现哪些接口, 在多处分别使用时可能体现的是不同接口的行为, 但代价已经存在于所有的这些地方.    
 
 ## 并发环境下的 itable
+
 验证并发环境下始终人有一个 itable 被产生.
 
 ```go
 type CanEat interface {
-	Eat()
+    Eat()
 }
 
 type Fruit struct {
-	name string
+    name string
 }
 
 func (this  Fruit) Eat() {
-	fmt.Println("in struct eat a fruit: ", this.name)
+    fmt.Println("in struct eat a fruit: ", this.name)
 }
 
 var flags chan bool
 
 func testItable(threadId int) []CanEat {
 
-	cases := 10
-	ret := make([]CanEat, cases)
-	for i:=0;i < cases;i ++{
+    cases := 10
+    ret := make([]CanEat, cases)
+    for i:=0;i < cases;i ++{
 
-		var caneat CanEat = Fruit{name:"apple"}
-		ret[i] = caneat
-		//fmt.Println("sizeof caneat: ", unsafe.Sizeof(caneat))    //mine pc prints 16
+        var caneat CanEat = Fruit{name:"apple"}
+        ret[i] = caneat
+        //fmt.Println("sizeof caneat: ", unsafe.Sizeof(caneat))    //mine pc prints 16
 
-		var itableAddrAddr *int = (*int)(unsafe.Pointer(&caneat))
-		fmt.Println("thread-", threadId,"itable address: ",*itableAddrAddr)
+        var itableAddrAddr *int = (*int)(unsafe.Pointer(&caneat))
+        fmt.Println("thread-", threadId,"itable address: ",*itableAddrAddr)
 
-		var dataAddrAddr *int = (*int)(unsafe.Pointer(uintptr(unsafe.Pointer(&caneat)) + uintptr(8)))
-		fmt.Println("thread-",threadId,"data address: ", *dataAddrAddr)
-	}
-	flags <- true
+        var dataAddrAddr *int = (*int)(unsafe.Pointer(uintptr(unsafe.Pointer(&caneat)) + uintptr(8)))
+        fmt.Println("thread-",threadId,"data address: ", *dataAddrAddr)
+    }
+    flags <- true
 
-	return ret
+    return ret
 }
 
 func main()  {
-	casees := 10
-	flags = make(chan bool, casees)
-	for i:=0;i<casees;i ++{
-		go testItable(i)
-	}
+    casees := 10
+    flags = make(chan bool, casees)
+    for i:=0;i<casees;i ++{
+        go testItable(i)
+    }
 
-	for i:=0;i < casees;i ++{
-		<- flags
-	}
-	fmt.Println("test finished ~")
+    for i:=0;i < casees;i ++{
+        <- flags
+    }
+    fmt.Println("test finished ~")
 }
-
 ```
-以上使用 10 个协程, 各跑 10 次，输出如下：
-thread- 9 itable address:  5432128
-thread- 9 data address:  825741279664
-thread- 7 itable address:  5432128
-thread- 7 data address:  825741221968
-thread- 5 itable address:  5432128
-thread- 5 data address:  825741222000
-thread- 5 itable address:  5432128
-thread- 5 data address:  825741680656
-thread- 4 itable address:  5432128
-thread- 4 data address:  825741697024
-thread- 4 itable address:  5432128
-thread- 4 data address:  825741222032
-thread- 4 itable address:  5432128
-thread- 4 data address:  825741222048
-thread- 4 itable address:  5432128
-thread- 4 data address:  825741222064
-thread- 4 itable address:  5432128
-thread- 4 data address:  825741222080
-thread- 4 itable address:  5432128
-thread- 4 data address:  825741222096
-thread- 2 itable address:  5432128
-thread- 2 data address:  825741221952
-thread- 2 itable address:  5432128
-thread- 2 data address:  825741279696
-thread- 2 itable address:  5432128
-thread- 2 data address:  825741279712
-thread- 2 itable address:  5432128
-thread- 2 data address:  825741279728
-.....
-限于篇幅, 不全部列出。如上很清晰可以看到 itable address 都是一致的，这说明只有一个 itable 产生。而很明显与之对应的是 data 所指变量每次都不一样，这是在预料中的。
+
+以上使用 10 个协程, 各跑 10 次，输出如下：  
+
+thread- 4 itable address:  5432128  
+
+thread- 4 data address:  825741222048  
+
+thread- 4 itable address:  5432128  
+
+thread- 4 data address:  825741222064  
+
+thread- 4 itable address:  5432128  
+
+thread- 4 data address:  825741222080  
+
+thread- 4 itable address:  5432128  
+
+thread- 4 data address:  825741222096  
+
+thread- 2 itable address:  5432128  
+
+thread- 2 data address:  825741221952  
+
+thread- 2 itable address:  5432128  
+
+thread- 2 data address:  825741279696  
+
+thread- 2 itable address:  5432128  
+
+thread- 2 data address:  825741279712  
+
+thread- 2 itable address:  5432128  
+
+thread- 2 data address:  825741279728  
+
+  
+.....  
+限于篇幅, 不全部列出。如上很清晰可以看到 itable address 都是一致的，这说明只有一个 itable 产生。而很明显与之对应的是 data 所指变量每次都不一样，这是在预料中的。  
 可能有人觉得奇怪，为什么 testItable 方法要返回无用的 CanEat 切片呢，这是为了验证每个 data 均不一样，若不返回此对象， golang 编译器的逃逸分析可能会导致各个线程产生的 Fruit 对象的地址总是一样的。
+
