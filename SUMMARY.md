@@ -29,4 +29,5 @@
 * [9999-2017个人总结](test.md)
 * [3000-levledb精读系列-读取效率优化](3000-levledbjing-du-xi-5217-du-qu-xiao-lv-you-hua.md)
 * [4000-ImgSearch-模块介绍](4000-imgsearchmo-kuai-jie-shao.md)
+* [1003-golang 之 interface](1003-golang-zhiinterface.md)
 
