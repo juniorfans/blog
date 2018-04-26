@@ -56,7 +56,7 @@ itablePtr 所指向的 itable 是对应于 interface 的, 而非具体类型的,
 
 ###如何生成 itable
 若程序中出现多次, 每一次 var a Animal = c 被执行时, 都会去生成 (Animal, Cat) 的 itable 吗? 从存储及运行效率来讲, 显然不会. 直觉上我们
-认为应该只会有一份 itable. 同时直觉上我们可能会认为, 如果该代码在高并发情况下运行, 是否可能为 (Animal, Cat) 生成两个 itable. 打开
+认为应该只会有一份 itable. 同时直觉上我们可能会认为, 如果该代码在高并发情况下运行, 是否可能为 (Animal, Cat) 生成多个 itable. 打开
 iface.go 源码, 我们发现几个事实:
 - 1.itable 是全局的, 并且是以 (interface+具体类型) 计算的 hash 值去关联的.
 - 2.itabsinit 和 getitab 中均加锁了, 所以不会有并发问题.
